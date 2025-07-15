@@ -1,0 +1,3 @@
+"""
+Desktop GUI application module.
+"""
