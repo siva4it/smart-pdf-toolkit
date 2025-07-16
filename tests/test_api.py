@@ -50,6 +50,32 @@ def client(test_config):
     return TestClient(app)
 
 
+@pytest.fixture
+def auth_headers(client):
+    """Get authentication headers for testing."""
+    # Login with test user to get token
+    response = client.post(
+        "/api/v1/auth/token",
+        data={"username": "user", "password": "userpassword", "scope": "read"}
+    )
+    assert response.status_code == 200
+    token_data = response.json()
+    return {"Authorization": f"Bearer {token_data['access_token']}"}
+
+
+@pytest.fixture
+def admin_headers(client):
+    """Get admin authentication headers for testing."""
+    # Login with admin user to get token
+    response = client.post(
+        "/api/v1/auth/token",
+        data={"username": "admin", "password": "adminpassword", "scope": "read write admin"}
+    )
+    assert response.status_code == 200
+    token_data = response.json()
+    return {"Authorization": f"Bearer {token_data['access_token']}"}
+
+
 def test_root_endpoint(client):
     """Test the root endpoint."""
     response = client.get("/")
@@ -138,83 +164,83 @@ def test_invalid_endpoint(client):
     assert response.status_code == 404
 
 
-def test_pdf_upload_endpoint_structure(client):
+def test_pdf_upload_endpoint_structure(client, auth_headers):
     """Test that PDF upload endpoint exists (structure test)."""
     # Test with no file (should fail but endpoint should exist)
-    response = client.post("/api/v1/pdf/upload")
+    response = client.post("/api/v1/pdf/upload", headers=auth_headers)
     # Should return 422 (validation error) not 404 (not found)
     assert response.status_code == 422
 
 
-def test_ai_services_endpoints_structure(client):
+def test_ai_services_endpoints_structure(client, auth_headers):
     """Test that AI services endpoints exist (structure test)."""
     # Test summarize endpoint structure
-    response = client.post("/api/v1/ai/summarize", json={})
+    response = client.post("/api/v1/ai/summarize", json={}, headers=auth_headers)
     # Should return 422 (validation error) not 404 (not found)
     assert response.status_code == 422
     
     # Test analyze endpoint structure
-    response = client.post("/api/v1/ai/analyze", json={})
+    response = client.post("/api/v1/ai/analyze", json={}, headers=auth_headers)
     assert response.status_code == 422
 
 
-def test_batch_processing_endpoints_structure(client):
+def test_batch_processing_endpoints_structure(client, auth_headers):
     """Test that batch processing endpoints exist (structure test)."""
     # Test create batch job endpoint structure
-    response = client.post("/api/v1/batch/jobs", json={})
+    response = client.post("/api/v1/batch/jobs", json={}, headers=auth_headers)
     # Should return 422 (validation error) not 404 (not found)
     assert response.status_code == 422
 
 
-def test_content_extraction_endpoints_structure(client):
+def test_content_extraction_endpoints_structure(client, auth_headers):
     """Test that content extraction endpoints exist (structure test)."""
     # Test text extraction endpoint structure
-    response = client.post("/api/v1/extract/text", json={})
+    response = client.post("/api/v1/extract/text", json={}, headers=auth_headers)
     # Should return 422 (validation error) not 404 (not found)
     assert response.status_code == 422
 
 
-def test_format_conversion_endpoints_structure(client):
+def test_format_conversion_endpoints_structure(client, auth_headers):
     """Test that format conversion endpoints exist (structure test)."""
     # Test PDF to images conversion endpoint structure
-    response = client.post("/api/v1/convert/to-images", json={})
+    response = client.post("/api/v1/convert/to-images", json={}, headers=auth_headers)
     assert response.status_code == 422
     
     # Test images to PDF conversion endpoint structure
-    response = client.post("/api/v1/convert/from-images", json={})
+    response = client.post("/api/v1/convert/from-images", json={}, headers=auth_headers)
     assert response.status_code == 422
 
 
-def test_security_endpoints_structure(client):
+def test_security_endpoints_structure(client, auth_headers):
     """Test that security endpoints exist (structure test)."""
     # Test add password endpoint structure
-    response = client.post("/api/v1/security/add-password", json={})
+    response = client.post("/api/v1/security/add-password", json={}, headers=auth_headers)
     assert response.status_code == 422
     
     # Test remove password endpoint structure
-    response = client.post("/api/v1/security/remove-password", json={})
+    response = client.post("/api/v1/security/remove-password", json={}, headers=auth_headers)
     assert response.status_code == 422
 
 
-def test_optimization_endpoints_structure(client):
+def test_optimization_endpoints_structure(client, auth_headers):
     """Test that optimization endpoints exist (structure test)."""
     # Test compress PDF endpoint structure
-    response = client.post("/api/v1/optimize/compress", json={})
+    response = client.post("/api/v1/optimize/compress", json={}, headers=auth_headers)
     assert response.status_code == 422
     
     # Test web optimization endpoint structure
-    response = client.post("/api/v1/optimize/optimize-web?file_id=test")
+    response = client.post("/api/v1/optimize/optimize-web?file_id=test", headers=auth_headers)
     assert response.status_code == 404  # File not found, but endpoint exists
 
 
-def test_file_download_endpoints_structure(client):
+def test_file_download_endpoints_structure(client, auth_headers):
     """Test that file download endpoints exist (structure test)."""
     # Test PDF download endpoint structure
-    response = client.get("/api/v1/pdf/download/nonexistent")
+    response = client.get("/api/v1/pdf/download/nonexistent", headers=auth_headers)
     assert response.status_code == 404  # File not found, but endpoint exists
     
     # Test content download endpoint structure
-    response = client.get("/api/v1/extract/download/nonexistent")
+    response = client.get("/api/v1/extract/download/nonexistent", headers=auth_headers)
     assert response.status_code == 404  # File not found, but endpoint exists
 
 
