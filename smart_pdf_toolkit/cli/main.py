@@ -11,6 +11,7 @@ import logging
 
 from .config import CLIConfig, load_cli_config
 from .commands import pdf_commands, content_commands, ai_commands, batch_commands
+from .completion import CompletionManager, complete_pdf_files, complete_config_files
 from ..core.exceptions import PDFToolkitError
 
 
@@ -99,11 +100,60 @@ def config_info(ctx):
     click.echo(f"  AI Service: {config.ai_service_url}")
 
 
+@cli.group()
+def completion():
+    """Shell completion management."""
+    pass
+
+
+@completion.command()
+@click.option('--shell', type=click.Choice(['bash', 'zsh', 'fish', 'powershell']),
+              help='Target shell (auto-detect if not specified)')
+@click.option('--force', is_flag=True, help='Force installation')
+def install(shell, force):
+    """Install shell completion."""
+    manager = CompletionManager()
+    success, message = manager.install_completion(shell, force)
+    
+    if success:
+        click.echo("Shell completion installation instructions:")
+        click.echo(message)
+    else:
+        click.echo(f"Failed to install completion: {message}", err=True)
+
+
+@completion.command()
+@click.argument('shell', type=click.Choice(['bash', 'zsh', 'fish', 'powershell']))
+def generate(shell):
+    """Generate completion script for a specific shell."""
+    manager = CompletionManager()
+    success, script = manager.generate_script(shell)
+    
+    if success:
+        click.echo(script)
+    else:
+        click.echo(f"Failed to generate script: {script}", err=True)
+
+
+@completion.command()
+def status():
+    """Show completion status and installation instructions."""
+    manager = CompletionManager()
+    status = manager.get_completion_status()
+    
+    click.echo(f"Current shell: {status['current_shell']}")
+    click.echo(f"Completion available: {'Yes' if status['completion_available'] else 'No'}")
+    click.echo(f"Supported shells: {', '.join(status['supported_shells'])}")
+    click.echo("\nInstallation instructions:")
+    click.echo(status['installation_instructions'])
+
+
 # Add command groups
 cli.add_command(pdf_commands.pdf)
 cli.add_command(content_commands.extract)
 cli.add_command(ai_commands.ai)
 cli.add_command(batch_commands.batch)
+cli.add_command(completion)
 
 
 def main():

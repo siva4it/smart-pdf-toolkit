@@ -10,6 +10,7 @@ import logging
 from ...core.pdf_operations import PDFOperationsManager
 from ...core.exceptions import PDFToolkitError
 from ..utils import validate_pdf_file, get_output_path, show_progress
+from ..completion import complete_pdf_files
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ def pdf():
 
 
 @pdf.command()
-@click.argument('files', nargs=-1, required=True, type=click.Path(exists=True))
+@click.argument('files', nargs=-1, required=True, type=click.Path(exists=True), shell_complete=complete_pdf_files)
 @click.option('--output', '-o', type=click.Path(), 
               help='Output file path')
 @click.option('--bookmark-titles', multiple=True,
@@ -75,7 +76,7 @@ def merge(ctx, files: Tuple[str], output: Optional[str], bookmark_titles: Tuple[
 
 
 @pdf.command()
-@click.argument('file', type=click.Path(exists=True))
+@click.argument('file', type=click.Path(exists=True), shell_complete=complete_pdf_files)
 @click.option('--pages', '-p', help='Page ranges to split (e.g., "1-3,5,7-9")')
 @click.option('--output-dir', '-o', type=click.Path(),
               help='Output directory for split files')
