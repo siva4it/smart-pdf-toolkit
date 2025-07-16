@@ -3,8 +3,10 @@ PDF operations endpoints.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from fastapi.responses import FileResponse
 from typing import List
 import logging
+import os
 
 from ..models import (
     MergePDFRequest,
@@ -284,4 +286,107 @@ async def reorder_pages(
         raise
     except Exception as e:
         logger.error(f"Page reordering failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/download/{file_id}")
+async def download_file(
+    file_id: str,
+    file_manager = Depends(get_file_manager)
+):
+    """
+    Download a processed PDF file.
+    
+    Args:
+        file_id: File identifier
+        file_manager: File manager service
+        
+    Returns:
+        File download response
+    """
+    try:
+        # Get file path from ID
+        file_path = await file_manager.get_file_path(file_id)
+        if not file_path or not os.path.exists(file_path):
+            raise HTTPException(
+                status_code=404,
+                detail=f"File not found: {file_id}"
+            )
+        
+        # Get filename for download
+        filename = os.path.basename(file_path)
+        
+        logger.info(f"File download requested: {file_id}")
+        return FileResponse(
+            path=file_path,
+            filename=filename,
+            media_type="application/pdf"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"File download failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/info/{file_id}")
+async def get_file_info(
+    file_id: str,
+    file_manager = Depends(get_file_manager)
+):
+    """
+    Get information about an uploaded or processed file.
+    
+    Args:
+        file_id: File identifier
+        file_manager: File manager service
+        
+    Returns:
+        File information
+    """
+    try:
+        # Get file path from ID
+        file_path = await file_manager.get_file_path(file_id)
+        if not file_path or not os.path.exists(file_path):
+            raise HTTPException(
+                status_code=404,
+                detail=f"File not found: {file_id}"
+            )
+        
+        # Get file statistics
+        file_stats = os.stat(file_path)
+        filename = os.path.basename(file_path)
+        
+        # Try to get PDF info using core services
+        try:
+            from ...core.pdf_document import PDFDocumentValidator
+            validator = PDFDocumentValidator()
+            pdf_info = validator.get_document_info(file_path)
+            
+            return {
+                "file_id": file_id,
+                "filename": filename,
+                "size": file_stats.st_size,
+                "created": file_stats.st_ctime,
+                "modified": file_stats.st_mtime,
+                "page_count": pdf_info.get("page_count", 0),
+                "is_encrypted": pdf_info.get("is_encrypted", False),
+                "title": pdf_info.get("title"),
+                "author": pdf_info.get("author")
+            }
+        except:
+            # Fallback to basic file info
+            return {
+                "file_id": file_id,
+                "filename": filename,
+                "size": file_stats.st_size,
+                "created": file_stats.st_ctime,
+                "modified": file_stats.st_mtime
+            }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get file info failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

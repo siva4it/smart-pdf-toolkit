@@ -3,7 +3,9 @@ Content extraction endpoints.
 """
 
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import FileResponse
 import logging
+import os
 
 from ..models import (
     ExtractTextRequest,
@@ -237,4 +239,106 @@ async def extract_links(
         raise
     except Exception as e:
         logger.error(f"Link extraction failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/ocr", response_model=OperationResult)
+async def perform_ocr(
+    file_id: str,
+    languages: list = None,
+    file_manager = Depends(get_file_manager)
+):
+    """
+    Perform OCR on a PDF document.
+    
+    Args:
+        file_id: File identifier
+        languages: List of languages for OCR (optional)
+        file_manager: File manager service
+        
+    Returns:
+        Operation result with OCR text
+    """
+    try:
+        # Get file path from ID
+        file_path = await file_manager.get_file_path(file_id)
+        if not file_path:
+            raise HTTPException(
+                status_code=404,
+                detail=f"File not found: {file_id}"
+            )
+        
+        # Import OCR service
+        from ..services import get_ocr_processor_service
+        ocr_service = get_ocr_processor_service()
+        
+        # Perform OCR
+        result = ocr_service.perform_ocr(file_path, languages or ['eng'])
+        
+        if result.success:
+            # Register output files
+            for output_file in result.output_files:
+                await file_manager.register_output_file(output_file)
+        
+        logger.info(f"OCR processing completed: {result.success}")
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"OCR processing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/download/{file_id}")
+async def download_extracted_content(
+    file_id: str,
+    file_manager = Depends(get_file_manager)
+):
+    """
+    Download extracted content file.
+    
+    Args:
+        file_id: File identifier
+        file_manager: File manager service
+        
+    Returns:
+        File download response
+    """
+    try:
+        # Get file path from ID
+        file_path = await file_manager.get_file_path(file_id)
+        if not file_path or not os.path.exists(file_path):
+            raise HTTPException(
+                status_code=404,
+                detail=f"File not found: {file_id}"
+            )
+        
+        # Get filename and determine media type
+        filename = os.path.basename(file_path)
+        file_ext = os.path.splitext(filename)[1].lower()
+        
+        media_type_map = {
+            '.txt': 'text/plain',
+            '.json': 'application/json',
+            '.csv': 'text/csv',
+            '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg'
+        }
+        
+        media_type = media_type_map.get(file_ext, 'application/octet-stream')
+        
+        logger.info(f"Content download requested: {file_id}")
+        return FileResponse(
+            path=file_path,
+            filename=filename,
+            media_type=media_type
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Content download failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

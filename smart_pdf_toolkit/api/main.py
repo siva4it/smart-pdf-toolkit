@@ -17,10 +17,14 @@ from typing import Dict, Any
 from .config import APIConfig, get_api_config
 from .middleware import setup_middleware
 from .routes import health
+from .routes import auth
 from .routes import pdf_operations
 from .routes import content_extraction
 from .routes import ai_services
 from .routes import batch_processing
+from .routes import format_conversion
+from .routes import security
+from .routes import optimization
 from .exceptions import setup_exception_handlers
 from ..core.exceptions import PDFToolkitError
 
@@ -98,10 +102,14 @@ def create_app(config: APIConfig = None) -> FastAPI:
     
     # Include routers
     app.include_router(health.router, prefix="/health", tags=["Health"])
+    app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
     app.include_router(pdf_operations.router, prefix="/api/v1/pdf", tags=["PDF Operations"])
     app.include_router(content_extraction.router, prefix="/api/v1/extract", tags=["Content Extraction"])
     app.include_router(ai_services.router, prefix="/api/v1/ai", tags=["AI Services"])
     app.include_router(batch_processing.router, prefix="/api/v1/batch", tags=["Batch Processing"])
+    app.include_router(format_conversion.router, prefix="/api/v1/convert", tags=["Format Conversion"])
+    app.include_router(security.router, prefix="/api/v1/security", tags=["Security"])
+    app.include_router(optimization.router, prefix="/api/v1/optimize", tags=["Optimization"])
     
     return app
 

@@ -67,8 +67,70 @@ async def security_headers_middleware(request: Request, call_next: Callable) -> 
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline';"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     
     return response
+
+
+async def sql_injection_protection_middleware(request: Request, call_next: Callable) -> Response:
+    """
+    Middleware for basic SQL injection protection.
+    
+    Args:
+        request: FastAPI request object
+        call_next: Next middleware/endpoint function
+        
+    Returns:
+        Response object
+    """
+    import re
+    
+    # Check query parameters for SQL injection patterns
+    for param, value in request.query_params.items():
+        if isinstance(value, str) and _contains_sql_injection(value):
+            logger.warning(f"Potential SQL injection detected in query parameter: {param}={value}")
+            return Response(
+                content="Invalid request",
+                status_code=400,
+                media_type="text/plain"
+            )
+    
+    # Continue processing the request
+    response = await call_next(request)
+    
+    return response
+
+
+def _contains_sql_injection(value: str) -> bool:
+    """
+    Check if a string contains SQL injection patterns.
+    
+    Args:
+        value: String to check
+        
+    Returns:
+        True if SQL injection pattern found, False otherwise
+    """
+    import re
+    
+    # Simple SQL injection patterns
+    patterns = [
+        r"(?i)\b(SELECT|INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|EXEC)\b.*\b(FROM|INTO|TABLE|DATABASE|SCHEMA)\b",
+        r"(?i)\b(UNION|JOIN)\b.*\b(SELECT)\b",
+        r"(?i)\b(OR|AND)\b.*\b(TRUE|FALSE|1|0)\b.*--",
+        r"(?i)\b(OR|AND)\b.*\b(TRUE|FALSE|1|0)\b.*#",
+        r"(?i)\b(OR|AND)\b.*\b(TRUE|FALSE|1|0)\b.*//",
+        r"(?i)\b(OR|AND)\b.*\b(TRUE|FALSE|1|0)\b.*\*\/",
+        r"(?i)\b(OR|AND)\b.*\b(TRUE|FALSE|1|0)\b.*;",
+        r"(?i)'; DROP TABLE"
+    ]
+    
+    for pattern in patterns:
+        if re.search(pattern, value):
+            return True
+    
+    return False
 
 
 def setup_middleware(app: FastAPI, config: APIConfig) -> None:
@@ -102,3 +164,4 @@ def setup_middleware(app: FastAPI, config: APIConfig) -> None:
     # Custom middleware
     app.middleware("http")(logging_middleware)
     app.middleware("http")(security_headers_middleware)
+    app.middleware("http")(sql_injection_protection_middleware)

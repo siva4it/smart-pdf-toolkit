@@ -175,6 +175,8 @@
     - _Requirements: 10.1, 10.4_
 
   - [ ] 10.2 Implement core API endpoints
+
+
     - Code endpoints for PDF operations (merge, split, rotate, extract)
     - Implement file upload and download handling
     - Add batch operation API endpoints

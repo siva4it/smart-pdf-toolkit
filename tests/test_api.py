@@ -172,3 +172,108 @@ def test_content_extraction_endpoints_structure(client):
     response = client.post("/api/v1/extract/text", json={})
     # Should return 422 (validation error) not 404 (not found)
     assert response.status_code == 422
+
+
+def test_format_conversion_endpoints_structure(client):
+    """Test that format conversion endpoints exist (structure test)."""
+    # Test PDF to images conversion endpoint structure
+    response = client.post("/api/v1/convert/to-images", json={})
+    assert response.status_code == 422
+    
+    # Test images to PDF conversion endpoint structure
+    response = client.post("/api/v1/convert/from-images", json={})
+    assert response.status_code == 422
+
+
+def test_security_endpoints_structure(client):
+    """Test that security endpoints exist (structure test)."""
+    # Test add password endpoint structure
+    response = client.post("/api/v1/security/add-password", json={})
+    assert response.status_code == 422
+    
+    # Test remove password endpoint structure
+    response = client.post("/api/v1/security/remove-password", json={})
+    assert response.status_code == 422
+
+
+def test_optimization_endpoints_structure(client):
+    """Test that optimization endpoints exist (structure test)."""
+    # Test compress PDF endpoint structure
+    response = client.post("/api/v1/optimize/compress", json={})
+    assert response.status_code == 422
+    
+    # Test web optimization endpoint structure
+    response = client.post("/api/v1/optimize/optimize-web?file_id=test")
+    assert response.status_code == 404  # File not found, but endpoint exists
+
+
+def test_file_download_endpoints_structure(client):
+    """Test that file download endpoints exist (structure test)."""
+    # Test PDF download endpoint structure
+    response = client.get("/api/v1/pdf/download/nonexistent")
+    assert response.status_code == 404  # File not found, but endpoint exists
+    
+    # Test content download endpoint structure
+    response = client.get("/api/v1/extract/download/nonexistent")
+    assert response.status_code == 404  # File not found, but endpoint exists
+
+
+def test_comprehensive_api_structure(client):
+    """Test comprehensive API structure and OpenAPI schema."""
+    # Get OpenAPI schema
+    response = client.get("/openapi.json")
+    assert response.status_code == 200
+    
+    schema = response.json()
+    paths = schema.get("paths", {})
+    
+    # Verify all major endpoint groups exist
+    expected_prefixes = [
+        "/health",
+        "/api/v1/pdf",
+        "/api/v1/extract", 
+        "/api/v1/ai",
+        "/api/v1/batch",
+        "/api/v1/convert",
+        "/api/v1/security",
+        "/api/v1/optimize"
+    ]
+    
+    for prefix in expected_prefixes:
+        matching_paths = [path for path in paths.keys() if path.startswith(prefix)]
+        assert len(matching_paths) > 0, f"No endpoints found for prefix: {prefix}"
+
+
+def test_api_tags_and_documentation(client):
+    """Test that API has proper tags and documentation."""
+    response = client.get("/openapi.json")
+    assert response.status_code == 200
+    
+    schema = response.json()
+    
+    # Check API info
+    info = schema.get("info", {})
+    assert info.get("title") == "Smart PDF Toolkit API"
+    assert info.get("version") == "1.0.0"
+    
+    # Check that tags are properly defined
+    expected_tags = [
+        "Health",
+        "PDF Operations", 
+        "Content Extraction",
+        "AI Services",
+        "Batch Processing",
+        "Format Conversion",
+        "Security",
+        "Optimization"
+    ]
+    
+    # Get all tags used in paths
+    used_tags = set()
+    for path_info in schema.get("paths", {}).values():
+        for method_info in path_info.values():
+            if isinstance(method_info, dict) and "tags" in method_info:
+                used_tags.update(method_info["tags"])
+    
+    for tag in expected_tags:
+        assert tag in used_tags, f"Tag '{tag}' not found in API documentation"

@@ -169,8 +169,8 @@ def get_security_manager_service() -> SecurityManager:
     """Get security manager service instance."""
     global _security_manager_service
     if _security_manager_service is None:
-        config = get_core_config()
-        _security_manager_service = SecurityManager(config)
+        # SecurityManager expects ApplicationConfig or None
+        _security_manager_service = SecurityManager()
     return _security_manager_service
 
 
@@ -179,8 +179,8 @@ def get_optimization_engine_service() -> OptimizationEngine:
     """Get optimization engine service instance."""
     global _optimization_engine_service
     if _optimization_engine_service is None:
-        config = get_core_config()
-        _optimization_engine_service = OptimizationEngine(config)
+        # OptimizationEngine expects ApplicationConfig or None
+        _optimization_engine_service = OptimizationEngine()
     return _optimization_engine_service
 
 
@@ -189,8 +189,8 @@ def get_format_converter_service() -> FormatConverter:
     """Get format converter service instance."""
     global _format_converter_service
     if _format_converter_service is None:
-        config = get_core_config()
-        _format_converter_service = FormatConverter(config)
+        # FormatConverter expects ApplicationConfig or None
+        _format_converter_service = FormatConverter()
     return _format_converter_service
 
 
@@ -200,5 +200,5 @@ def get_ocr_processor_service() -> OCRProcessor:
     global _ocr_processor_service
     if _ocr_processor_service is None:
         config = get_core_config()
-        _ocr_processor_service = OCRProcessor(config)
+        _ocr_processor_service = OCRProcessor(temp_dir=config['temp_directory'])
     return _ocr_processor_service

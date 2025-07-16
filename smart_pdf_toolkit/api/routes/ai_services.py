@@ -328,3 +328,56 @@ async def send_chat_message(
     except Exception as e:
         logger.error(f"Chat message failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/download/{file_id}")
+async def download_ai_result(
+    file_id: str,
+    file_manager = Depends(get_file_manager)
+):
+    """
+    Download AI processing result file.
+    
+    Args:
+        file_id: File identifier
+        file_manager: File manager service
+        
+    Returns:
+        File download response
+    """
+    try:
+        from fastapi.responses import FileResponse
+        import os
+        
+        # Get file path from ID
+        file_path = await file_manager.get_file_path(file_id)
+        if not file_path or not os.path.exists(file_path):
+            raise HTTPException(
+                status_code=404,
+                detail=f"File not found: {file_id}"
+            )
+        
+        # Get filename and determine media type
+        filename = os.path.basename(file_path)
+        file_ext = os.path.splitext(filename)[1].lower()
+        
+        media_type_map = {
+            '.txt': 'text/plain',
+            '.json': 'application/json',
+            '.pdf': 'application/pdf'
+        }
+        
+        media_type = media_type_map.get(file_ext, 'text/plain')
+        
+        logger.info(f"AI result download requested: {file_id}")
+        return FileResponse(
+            path=file_path,
+            filename=filename,
+            media_type=media_type
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"AI result download failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
