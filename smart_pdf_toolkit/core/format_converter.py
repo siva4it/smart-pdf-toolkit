@@ -374,8 +374,9 @@ class FormatConverter(IFormatConverter):
             # Try LibreOffice first, then fallback methods
             result = self._office_to_pdf_libreoffice(input_path, output_path)
             if not result.success:
-                # Could add other fallback methods here
-                pass
+                # Try fallback method for DOCX files
+                if input_path.lower().endswith('.docx'):
+                    result = self._docx_to_pdf_fallback(input_path, output_path)
             
             return result
             
@@ -560,6 +561,16 @@ class FormatConverter(IFormatConverter):
                     execution_time=time.time() - start_time,
                     warnings=[],
                     errors=["No images provided"]
+                )
+            
+            if not target_format:
+                return OperationResult(
+                    success=False,
+                    message="No target format specified",
+                    output_files=[],
+                    execution_time=time.time() - start_time,
+                    warnings=[],
+                    errors=["No target format specified"]
                 )
             
             if target_format.upper() not in self.SUPPORTED_IMAGE_FORMATS:
