@@ -11,11 +11,11 @@ from smart_pdf_toolkit.core.config import ApplicationConfig
 
 print("All imports successful")
 
-class TestConverter(IFormatConverter):
+class MockConverter(IFormatConverter):
     """Test converter class"""
     
     def __init__(self):
-        print("TestConverter initialized")
+        print("MockConverter initialized")
     
     def pdf_to_images(self, pdf_path: str, format: str, quality: int) -> OperationResult:
         return OperationResult(
@@ -67,6 +67,6 @@ class TestConverter(IFormatConverter):
             errors=[]
         )
 
-print("TestConverter defined")
-converter = TestConverter()
-print("TestConverter instantiated successfully")
+print("MockConverter defined")
+converter = MockConverter()
+print("MockConverter instantiated successfully")

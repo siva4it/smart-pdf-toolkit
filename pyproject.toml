@@ -57,6 +57,7 @@ dependencies = [
     "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
     "pydantic-settings>=2.0.0",
+    "psutil>=5.9.0",
     
     # CLI dependencies
     "click>=8.1.0",
