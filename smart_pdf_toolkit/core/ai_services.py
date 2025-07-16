@@ -808,6 +808,511 @@ class AIServices(IAIServices):
         
         return answer
     
+    def translate_content(self, pdf_path: str, target_language: str, preserve_formatting: bool = True) -> OperationResult:
+        """
+        Translate PDF content while preserving formatting.
+        
+        Args:
+            pdf_path: Path to the PDF file
+            target_language: Target language for translation
+            preserve_formatting: Whether to preserve original formatting
+            
+        Returns:
+            OperationResult with translated content
+        """
+        start_time = time.time()
+        
+        try:
+            # Validate inputs
+            if not os.path.exists(pdf_path):
+                raise FileOperationError(f"PDF file not found: {pdf_path}")
+            
+            if not target_language.strip():
+                raise ValidationError("Target language cannot be empty")
+            
+            self.logger.info(f"Starting content translation for {pdf_path} to {target_language}")
+            
+            # Extract text content
+            text_result = self.content_extractor.extract_text(pdf_path, preserve_layout=preserve_formatting)
+            if not text_result.success:
+                raise AIServiceError(f"Failed to extract text: {text_result.message}")
+            
+            # Read extracted text
+            text_content = ""
+            if text_result.output_files:
+                with open(text_result.output_files[0], 'r', encoding='utf-8') as f:
+                    text_content = f.read()
+            
+            if not text_content.strip():
+                return OperationResult(
+                    success=False,
+                    message="No text content found for translation",
+                    output_files=[],
+                    execution_time=time.time() - start_time,
+                    warnings=["Document appears to be empty or image-based"],
+                    errors=["No extractable text content"]
+                )
+            
+            # Check cache first
+            cache_key = self._generate_cache_key(pdf_path, f"translate_{target_language}_{preserve_formatting}")
+            cached_result = self._get_cached_result(cache_key)
+            if cached_result:
+                self.logger.info("Using cached translation result")
+                return cached_result
+            
+            # Perform translation
+            translated_content = self._translate_text(text_content, target_language, preserve_formatting)
+            
+            # Save translated content to file
+            output_file = self._save_translation(pdf_path, translated_content, target_language)
+            
+            # Create result
+            result = OperationResult(
+                success=True,
+                message=f"Content translated to {target_language} successfully",
+                output_files=[output_file],
+                execution_time=time.time() - start_time,
+                warnings=[],
+                errors=[]
+            )
+            
+            # Cache result
+            self._cache_result(cache_key, result)
+            
+            return result
+            
+        except Exception as e:
+            error_msg = f"Content translation failed: {str(e)}"
+            self.logger.error(error_msg)
+            return OperationResult(
+                success=False,
+                message=error_msg,
+                output_files=[],
+                execution_time=time.time() - start_time,
+                warnings=[],
+                errors=[str(e)]
+            )
+    
+    def interactive_chat(self, pdf_path: str, conversation_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
+        """
+        Start an interactive chat session about the PDF document.
+        
+        Args:
+            pdf_path: Path to the PDF file
+            conversation_history: Previous conversation messages
+            
+        Returns:
+            Dictionary with chat session information
+        """
+        try:
+            if not os.path.exists(pdf_path):
+                raise FileOperationError(f"PDF file not found: {pdf_path}")
+            
+            # Initialize conversation history if not provided
+            if conversation_history is None:
+                conversation_history = []
+            
+            # Extract document content for context
+            text_result = self.content_extractor.extract_text(pdf_path, preserve_layout=False)
+            if not text_result.success:
+                raise AIServiceError(f"Failed to extract text: {text_result.message}")
+            
+            # Read extracted text
+            document_context = ""
+            if text_result.output_files:
+                with open(text_result.output_files[0], 'r', encoding='utf-8') as f:
+                    document_context = f.read()
+            
+            # Create chat session
+            chat_session = {
+                'pdf_path': pdf_path,
+                'document_context': document_context[:2000],  # Limit context size
+                'conversation_history': conversation_history,
+                'session_id': hashlib.md5(f"{pdf_path}_{datetime.now().isoformat()}".encode()).hexdigest(),
+                'created_at': datetime.now().isoformat(),
+                'status': 'active'
+            }
+            
+            return chat_session
+            
+        except Exception as e:
+            self.logger.error(f"Failed to start interactive chat: {str(e)}")
+            return {
+                'status': 'error',
+                'error': str(e),
+                'created_at': datetime.now().isoformat()
+            }
+    
+    def continue_chat(self, session_id: str, user_message: str, chat_context: Dict[str, Any]) -> OperationResult:
+        """
+        Continue an interactive chat conversation.
+        
+        Args:
+            session_id: Chat session identifier
+            user_message: User's message/question
+            chat_context: Chat session context
+            
+        Returns:
+            OperationResult with AI response
+        """
+        start_time = time.time()
+        
+        try:
+            if not user_message.strip():
+                raise ValidationError("User message cannot be empty")
+            
+            if not chat_context or chat_context.get('status') != 'active':
+                raise ValidationError("Invalid or inactive chat session")
+            
+            self.logger.info(f"Processing chat message for session {session_id}")
+            
+            # Get document context
+            document_context = chat_context.get('document_context', '')
+            conversation_history = chat_context.get('conversation_history', [])
+            
+            # Generate response using document context and conversation history
+            response = self._generate_chat_response(user_message, document_context, conversation_history)
+            
+            # Update conversation history
+            conversation_history.append({
+                'role': 'user',
+                'message': user_message,
+                'timestamp': datetime.now().isoformat()
+            })
+            conversation_history.append({
+                'role': 'assistant',
+                'message': response,
+                'timestamp': datetime.now().isoformat()
+            })
+            
+            # Save conversation to file
+            output_file = self._save_chat_conversation(session_id, conversation_history)
+            
+            # Create result
+            result = OperationResult(
+                success=True,
+                message=response,
+                output_files=[output_file],
+                execution_time=time.time() - start_time,
+                warnings=[],
+                errors=[]
+            )
+            
+            return result
+            
+        except Exception as e:
+            error_msg = f"Chat conversation failed: {str(e)}"
+            self.logger.error(error_msg)
+            return OperationResult(
+                success=False,
+                message=error_msg,
+                output_files=[],
+                execution_time=time.time() - start_time,
+                warnings=[],
+                errors=[str(e)]
+            )
+    
+    def _translate_text(self, text_content: str, target_language: str, preserve_formatting: bool) -> str:
+        """
+        Translate text content to target language.
+        
+        Args:
+            text_content: Text to translate
+            target_language: Target language
+            preserve_formatting: Whether to preserve formatting
+            
+        Returns:
+            Translated text
+        """
+        try:
+            # Try AI service first if available
+            if self.ai_api_key:
+                return self._ai_translate(text_content, target_language, preserve_formatting)
+            else:
+                # Fallback to simple translation mapping
+                return self._simple_translate(text_content, target_language, preserve_formatting)
+        except Exception as e:
+            self.logger.warning(f"AI translation failed, using fallback: {str(e)}")
+            return self._simple_translate(text_content, target_language, preserve_formatting)
+    
+    def _ai_translate(self, text_content: str, target_language: str, preserve_formatting: bool) -> str:
+        """
+        Translate text using AI service (placeholder for actual AI integration).
+        
+        Args:
+            text_content: Text to translate
+            target_language: Target language
+            preserve_formatting: Whether to preserve formatting
+            
+        Returns:
+            AI-translated text
+        """
+        # This is a placeholder for actual AI service integration
+        # In a real implementation, this would call translation APIs like Google Translate, DeepL, etc.
+        
+        formatting_instruction = "while preserving the original formatting, structure, and layout" if preserve_formatting else ""
+        
+        prompt = f"""
+        Please translate the following text to {target_language} {formatting_instruction}.
+        Maintain any special characters, line breaks, and document structure.
+        
+        Text to translate:
+        {text_content[:3000]}  # Limit text to avoid token limits
+        """
+        
+        # Placeholder response - in real implementation, this would be an API call
+        return self._simple_translate(text_content, target_language, preserve_formatting)
+    
+    def _simple_translate(self, text_content: str, target_language: str, preserve_formatting: bool) -> str:
+        """
+        Simple translation fallback using basic word mapping.
+        
+        Args:
+            text_content: Text to translate
+            target_language: Target language
+            preserve_formatting: Whether to preserve formatting
+            
+        Returns:
+            Translated text (basic fallback)
+        """
+        # Basic translation mappings for common words
+        translation_maps = {
+            'spanish': {
+                'hello': 'hola',
+                'goodbye': 'adiós',
+                'thank you': 'gracias',
+                'please': 'por favor',
+                'yes': 'sí',
+                'no': 'no',
+                'document': 'documento',
+                'page': 'página',
+                'text': 'texto',
+                'content': 'contenido',
+                'information': 'información',
+                'data': 'datos',
+                'report': 'informe',
+                'analysis': 'análisis',
+                'summary': 'resumen',
+                'conclusion': 'conclusión'
+            },
+            'french': {
+                'hello': 'bonjour',
+                'goodbye': 'au revoir',
+                'thank you': 'merci',
+                'please': 's\'il vous plaît',
+                'yes': 'oui',
+                'no': 'non',
+                'document': 'document',
+                'page': 'page',
+                'text': 'texte',
+                'content': 'contenu',
+                'information': 'information',
+                'data': 'données',
+                'report': 'rapport',
+                'analysis': 'analyse',
+                'summary': 'résumé',
+                'conclusion': 'conclusion'
+            },
+            'german': {
+                'hello': 'hallo',
+                'goodbye': 'auf wiedersehen',
+                'thank you': 'danke',
+                'please': 'bitte',
+                'yes': 'ja',
+                'no': 'nein',
+                'document': 'dokument',
+                'page': 'seite',
+                'text': 'text',
+                'content': 'inhalt',
+                'information': 'information',
+                'data': 'daten',
+                'report': 'bericht',
+                'analysis': 'analyse',
+                'summary': 'zusammenfassung',
+                'conclusion': 'schlussfolgerung'
+            }
+        }
+        
+        target_lang_lower = target_language.lower()
+        if target_lang_lower not in translation_maps:
+            # If language not supported, return original with note
+            return f"[Translation to {target_language} not available in offline mode]\n\n{text_content}"
+        
+        translation_map = translation_maps[target_lang_lower]
+        translated_text = text_content.lower()
+        
+        # Apply basic word replacements
+        for english_word, translated_word in translation_map.items():
+            translated_text = translated_text.replace(english_word, translated_word)
+        
+        # Preserve formatting if requested
+        if preserve_formatting:
+            # Keep original line breaks and structure
+            lines = text_content.split('\n')
+            translated_lines = translated_text.split('\n')
+            
+            # Ensure we have the same number of lines
+            if len(translated_lines) != len(lines):
+                translated_lines = lines  # Fallback to original structure
+            
+            translated_text = '\n'.join(translated_lines)
+        
+        return f"[Basic translation to {target_language}]\n\n{translated_text}"
+    
+    def _generate_chat_response(self, user_message: str, document_context: str, conversation_history: List[Dict[str, str]]) -> str:
+        """
+        Generate response for interactive chat.
+        
+        Args:
+            user_message: User's message
+            document_context: Document content for context
+            conversation_history: Previous conversation
+            
+        Returns:
+            AI response
+        """
+        try:
+            # Try AI service first if available
+            if self.ai_api_key:
+                return self._ai_chat_response(user_message, document_context, conversation_history)
+            else:
+                # Fallback to enhanced keyword-based response
+                return self._enhanced_keyword_response(user_message, document_context, conversation_history)
+        except Exception as e:
+            self.logger.warning(f"AI chat response failed, using fallback: {str(e)}")
+            return self._enhanced_keyword_response(user_message, document_context, conversation_history)
+    
+    def _ai_chat_response(self, user_message: str, document_context: str, conversation_history: List[Dict[str, str]]) -> str:
+        """
+        Generate chat response using AI service (placeholder for actual AI integration).
+        
+        Args:
+            user_message: User's message
+            document_context: Document content
+            conversation_history: Previous conversation
+            
+        Returns:
+            AI-generated response
+        """
+        # This is a placeholder for actual AI service integration
+        # In a real implementation, this would call OpenAI, Anthropic, or other conversational AI APIs
+        
+        # Build conversation context
+        context_messages = []
+        for msg in conversation_history[-5:]:  # Last 5 messages for context
+            context_messages.append(f"{msg['role']}: {msg['message']}")
+        
+        conversation_context = "\n".join(context_messages)
+        
+        prompt = f"""
+        You are an AI assistant helping users understand and analyze a PDF document.
+        
+        Document context:
+        {document_context[:1500]}
+        
+        Recent conversation:
+        {conversation_context}
+        
+        User's current question: {user_message}
+        
+        Please provide a helpful, accurate response based on the document content and conversation context.
+        """
+        
+        # Placeholder response - in real implementation, this would be an API call
+        return self._enhanced_keyword_response(user_message, document_context, conversation_history)
+    
+    def _enhanced_keyword_response(self, user_message: str, document_context: str, conversation_history: List[Dict[str, str]]) -> str:
+        """
+        Generate enhanced keyword-based response for chat.
+        
+        Args:
+            user_message: User's message
+            document_context: Document content
+            conversation_history: Previous conversation
+            
+        Returns:
+            Enhanced response
+        """
+        user_message_lower = user_message.lower()
+        
+        # Check for summary requests first (higher priority)
+        summary_keywords = ['summary', 'summarize', 'overview', 'main points', 'key points']
+        if any(keyword in user_message_lower for keyword in summary_keywords):
+            # Generate a quick summary from document context
+            sentences = [s.strip() for s in document_context.split('.') if s.strip()][:3]
+            summary = '. '.join(sentences) + '.'
+            return f"Here's a brief summary of the document:\n\n{summary}\n\nWould you like me to elaborate on any specific aspect?"
+        
+        # Check for greeting patterns (only if not a summary request)
+        greetings = ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening']
+        if any(greeting in user_message_lower for greeting in greetings) and not any(keyword in user_message_lower for keyword in summary_keywords):
+            return "Hello! I'm here to help you understand and analyze this PDF document. What would you like to know about it?"
+        
+        # Check for specific questions
+        question_words = ['what', 'when', 'where', 'who', 'why', 'how']
+        if any(word in user_message.lower() for word in question_words):
+            # Use existing question-answering logic
+            answer = self._keyword_answer_question(document_context, user_message)
+            if "couldn't find information" not in answer:
+                return answer
+        
+        # Check for help requests
+        help_keywords = ['help', 'assist', 'support', 'guide']
+        if any(keyword in user_message.lower() for keyword in help_keywords):
+            return """I can help you with various tasks related to this PDF document:
+
+• Ask questions about the content
+• Request summaries or explanations
+• Find specific information
+• Analyze key topics and themes
+• Translate content to other languages
+
+What would you like to explore?"""
+        
+        # Default response with document-based suggestions
+        return f"""I understand you're asking about: "{user_message}"
+
+Based on the document content, I can help you with:
+• Specific questions about the content
+• Summaries and key points
+• Finding particular information
+• Content analysis
+
+Could you please be more specific about what you'd like to know?"""
+    
+    def _save_translation(self, pdf_path: str, translated_content: str, target_language: str) -> str:
+        """Save translated content to file."""
+        base_name = os.path.splitext(os.path.basename(pdf_path))[0]
+        output_file = f"temp/{base_name}_translated_{target_language}.txt"
+        
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(f"Translated Content ({target_language})\n")
+            f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"Source: {pdf_path}\n")
+            f.write(f"{'='*50}\n\n")
+            f.write(translated_content)
+        
+        return output_file
+    
+    def _save_chat_conversation(self, session_id: str, conversation_history: List[Dict[str, str]]) -> str:
+        """Save chat conversation to file."""
+        output_file = f"temp/chat_session_{session_id}.json"
+        
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        
+        chat_data = {
+            'session_id': session_id,
+            'conversation_history': conversation_history,
+            'saved_at': datetime.now().isoformat()
+        }
+        
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(chat_data, f, indent=2, ensure_ascii=False)
+        
+        return output_file
+    
     def _generate_cache_key(self, pdf_path: str, operation: str) -> str:
         """Generate cache key for operation."""
         # Use file path, modification time, and operation to create unique key

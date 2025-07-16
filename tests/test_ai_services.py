@@ -233,6 +233,177 @@ class TestAIServices(unittest.TestCase):
         self.assertIn("When was the company founded?", content)
         self.assertIn("2020", content)  # Should find the answer in the text
     
+    def test_translate_content_success(self):
+        """Test successful content translation."""
+        # Mock content extractor
+        mock_extractor = Mock()
+        
+        # Mock text extraction result
+        text_file = os.path.join(self.temp_dir, 'extracted_text.txt')
+        with open(text_file, 'w', encoding='utf-8') as f:
+            f.write("Hello, this is a test document with important information.")
+        
+        mock_result = Mock()
+        mock_result.success = True
+        mock_result.output_files = [text_file]
+        mock_extractor.extract_text.return_value = mock_result
+        
+        # Create AI services with mocked extractor
+        ai_services = AIServices(self.config, content_extractor=mock_extractor)
+        
+        # Test translation
+        result = ai_services.translate_content(self.sample_pdf, "spanish", preserve_formatting=True)
+        
+        self.assertTrue(result.success)
+        self.assertIn("translated to spanish", result.message)
+        self.assertEqual(len(result.output_files), 1)
+        self.assertTrue(os.path.exists(result.output_files[0]))
+        
+        # Check translation file content
+        with open(result.output_files[0], 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        self.assertIn("spanish", content.lower())
+        self.assertIn("hola", content.lower())  # Should contain Spanish translation
+    
+    def test_translate_content_invalid_language(self):
+        """Test translation with empty target language."""
+        # Mock content extractor
+        mock_extractor = Mock()
+        ai_services = AIServices(self.config, content_extractor=mock_extractor)
+        
+        result = ai_services.translate_content(self.sample_pdf, "")
+        
+        self.assertFalse(result.success)
+        self.assertIn("cannot be empty", result.message)
+        self.assertEqual(len(result.output_files), 0)
+        self.assertGreater(len(result.errors), 0)
+    
+    def test_interactive_chat_initialization(self):
+        """Test interactive chat session initialization."""
+        # Mock content extractor
+        mock_extractor = Mock()
+        
+        # Mock text extraction result
+        text_file = os.path.join(self.temp_dir, 'extracted_text.txt')
+        with open(text_file, 'w', encoding='utf-8') as f:
+            f.write("This is a sample document for chat testing.")
+        
+        mock_result = Mock()
+        mock_result.success = True
+        mock_result.output_files = [text_file]
+        mock_extractor.extract_text.return_value = mock_result
+        
+        # Create AI services with mocked extractor
+        ai_services = AIServices(self.config, content_extractor=mock_extractor)
+        
+        # Test chat initialization
+        chat_session = ai_services.interactive_chat(self.sample_pdf)
+        
+        self.assertEqual(chat_session['status'], 'active')
+        self.assertEqual(chat_session['pdf_path'], self.sample_pdf)
+        self.assertIn('session_id', chat_session)
+        self.assertIn('document_context', chat_session)
+        self.assertIsInstance(chat_session['conversation_history'], list)
+    
+    def test_continue_chat_success(self):
+        """Test continuing a chat conversation."""
+        # Mock content extractor
+        mock_extractor = Mock()
+        
+        # Mock text extraction result
+        text_file = os.path.join(self.temp_dir, 'extracted_text.txt')
+        with open(text_file, 'w', encoding='utf-8') as f:
+            f.write("This document discusses artificial intelligence and machine learning.")
+        
+        mock_result = Mock()
+        mock_result.success = True
+        mock_result.output_files = [text_file]
+        mock_extractor.extract_text.return_value = mock_result
+        
+        # Create AI services with mocked extractor
+        ai_services = AIServices(self.config, content_extractor=mock_extractor)
+        
+        # Initialize chat session
+        chat_session = ai_services.interactive_chat(self.sample_pdf)
+        
+        # Continue chat
+        result = ai_services.continue_chat(
+            chat_session['session_id'],
+            "What is this document about?",
+            chat_session
+        )
+        
+        self.assertTrue(result.success)
+        self.assertIsInstance(result.message, str)
+        self.assertGreater(len(result.message), 0)
+        self.assertEqual(len(result.output_files), 1)
+        self.assertTrue(os.path.exists(result.output_files[0]))
+    
+    def test_continue_chat_invalid_session(self):
+        """Test continuing chat with invalid session."""
+        ai_services = AIServices(self.config)
+        
+        invalid_session = {'status': 'inactive'}
+        result = ai_services.continue_chat("invalid_id", "Hello", invalid_session)
+        
+        self.assertFalse(result.success)
+        self.assertIn("Invalid or inactive", result.message)
+        self.assertEqual(len(result.output_files), 0)
+    
+    def test_enhanced_keyword_response(self):
+        """Test enhanced keyword-based chat responses."""
+        ai_services = AIServices(self.config)
+        
+        document_context = "This document discusses artificial intelligence and machine learning technologies."
+        conversation_history = []
+        
+        # Test greeting
+        greeting_response = ai_services._enhanced_keyword_response(
+            "Hello", document_context, conversation_history
+        )
+        self.assertIn("Hello", greeting_response)
+        self.assertIn("help", greeting_response.lower())
+        
+        # Test summary request
+        summary_response = ai_services._enhanced_keyword_response(
+            "Can you summarize this?", document_context, conversation_history
+        )
+        self.assertIn("summary", summary_response.lower())
+        self.assertIn("artificial intelligence", summary_response)
+        
+        # Test help request
+        help_response = ai_services._enhanced_keyword_response(
+            "I need help", document_context, conversation_history
+        )
+        self.assertIn("help", help_response.lower())
+        self.assertIn("questions", help_response.lower())
+    
+    def test_simple_translate_methods(self):
+        """Test simple translation methods."""
+        ai_services = AIServices(self.config)
+        
+        # Test Spanish translation
+        spanish_result = ai_services._simple_translate(
+            "Hello, thank you for the document", "spanish", True
+        )
+        self.assertIn("hola", spanish_result.lower())
+        self.assertIn("gracias", spanish_result.lower())
+        
+        # Test French translation
+        french_result = ai_services._simple_translate(
+            "Hello, thank you for the document", "french", True
+        )
+        self.assertIn("bonjour", french_result.lower())
+        self.assertIn("merci", french_result.lower())
+        
+        # Test unsupported language
+        unsupported_result = ai_services._simple_translate(
+            "Hello world", "klingon", True
+        )
+        self.assertIn("not available", unsupported_result)
+        self.assertIn("Hello world", unsupported_result)
+    
     def test_answer_question_empty_question(self):
         """Test question answering with empty question."""
         result = self.ai_services.answer_question(self.sample_pdf, "")

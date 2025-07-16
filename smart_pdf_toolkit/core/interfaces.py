@@ -228,6 +228,11 @@ class IAIServices(ABC):
     def classify_document(self, pdf_path: str) -> OperationResult:
         """Classify document based on content."""
         pass
+    
+    @abstractmethod
+    def translate_content(self, pdf_path: str, target_language: str, preserve_formatting: bool = True) -> OperationResult:
+        """Translate PDF content while preserving formatting."""
+        pass
 
 
 class IBatchProcessor(ABC):
