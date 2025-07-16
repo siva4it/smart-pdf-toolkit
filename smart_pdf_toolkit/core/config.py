@@ -23,9 +23,28 @@ class ApplicationConfig:
     log_level: str = "INFO"
     log_file: Optional[str] = None
     
+    # GUI-specific attributes
+    output_dir: Path = None
+    temp_dir: Path = None
+    
     def __post_init__(self):
         if self.ocr_languages is None:
             self.ocr_languages = ["eng"]
+        if self.output_dir is None:
+            self.output_dir = Path.home() / "smart_pdf_output"
+        if self.temp_dir is None:
+            self.temp_dir = Path(self.temp_directory)
+    
+    def save(self):
+        """Save configuration to file."""
+        # For now, this is a no-op. In a full implementation,
+        # this would save to a config file
+        pass
+    
+    def reset_to_defaults(self):
+        """Reset configuration to default values."""
+        self.__init__()
+        self.__post_init__()
 
 
 @dataclass
@@ -42,6 +61,10 @@ class PluginConfig:
             self.settings = {}
         if self.dependencies is None:
             self.dependencies = []
+
+
+# Alias for backward compatibility
+Config = ApplicationConfig
 
 
 class ConfigManager:
