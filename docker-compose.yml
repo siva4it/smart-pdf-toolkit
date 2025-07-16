@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # Smart PDF Toolkit API Server
+  smart-pdf-api:
+    build:
+      context: .
+      target: production
+    ports:
+      - "8000:8000"
+    environment:
+      - SMART_PDF_OUTPUT_DIR=/app/output
+      - SMART_PDF_TEMP_DIR=/app/temp
+      - SMART_PDF_MAX_FILE_SIZE=104857600  # 100MB
+      - SMART_PDF_AI_API_KEY=${OPENAI_API_KEY:-}
+    volumes:
+      - ./uploads:/home/app/uploads
+      - ./temp:/home/app/temp
+      - ./output:/home/app/output
+      - ./config:/home/app/config
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis for caching (optional)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+  # PostgreSQL for persistent storage (optional)
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=smart_pdf_toolkit
+      - POSTGRES_USER=smart_pdf_user
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-smart_pdf_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+
+  # Nginx reverse proxy (optional)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - smart-pdf-api
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  postgres_data:
+
+networks:
+  default:
+    name: smart-pdf-network
