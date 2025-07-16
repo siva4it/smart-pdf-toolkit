@@ -18,6 +18,8 @@ from ..core.exceptions import PDFToolkitError
 from .file_browser import FileBrowser
 from .operation_tabs import OperationTabs
 from .progress_dialog import ProgressDialog
+from .settings_dialog import SettingsDialog
+from .batch_processing_dialog import BatchProcessingDialog
 
 
 class MainWindow(QMainWindow):
@@ -94,6 +96,13 @@ class MainWindow(QMainWindow):
         
         # Tools menu
         tools_menu = menubar.addMenu('&Tools')
+        
+        batch_action = QAction('&Batch Processing...', self)
+        batch_action.setShortcut('Ctrl+B')
+        batch_action.triggered.connect(self.show_batch_processing)
+        tools_menu.addAction(batch_action)
+        
+        tools_menu.addSeparator()
         
         settings_action = QAction('&Settings...', self)
         settings_action.triggered.connect(self.show_settings)
@@ -278,15 +287,26 @@ class MainWindow(QMainWindow):
         """Show error message dialog."""
         QMessageBox.critical(self, "Error", message)
         
+    def show_batch_processing(self):
+        """Show batch processing dialog."""
+        dialog = BatchProcessingDialog(self.config, self)
+        dialog.show()
+        
     def show_settings(self):
         """Show settings dialog."""
-        # TODO: Implement settings dialog
-        QMessageBox.information(self, "Settings", "Settings dialog not yet implemented")
+        dialog = SettingsDialog(self.config, self)
+        dialog.settings_changed.connect(self.on_settings_changed)
+        dialog.exec()
         
     def show_plugins(self):
         """Show plugins dialog."""
         # TODO: Implement plugins dialog
         QMessageBox.information(self, "Plugins", "Plugins dialog not yet implemented")
+        
+    def on_settings_changed(self):
+        """Handle settings changes."""
+        # Reload configuration and update UI as needed
+        self.status_bar.showMessage("Settings updated", 3000)
         
     def show_about(self):
         """Show about dialog."""

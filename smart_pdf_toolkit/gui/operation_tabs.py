@@ -12,6 +12,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 
 from ..core.config import Config
+from .ai_services_tab import AIServicesTab
+from .format_conversion_tab import FormatConversionTab
+from .security_optimization_tab import SecurityOptimizationTab
 
 
 class PDFOperationsTab(QWidget):
@@ -332,19 +335,30 @@ class OperationTabs(QTabWidget):
         self.content_tab = ContentExtractionTab(self.config)
         self.addTab(self.content_tab, "Content Extraction")
         
-        # TODO: Add more tabs for other operations
-        # - AI Services
-        # - Format Conversion
-        # - Security
-        # - Optimization
-        # - Batch Processing
+        # AI Services tab
+        self.ai_tab = AIServicesTab(self.config)
+        self.addTab(self.ai_tab, "AI Services")
+        
+        # Format Conversion tab
+        self.format_tab = FormatConversionTab(self.config)
+        self.addTab(self.format_tab, "Format Conversion")
+        
+        # Security & Optimization tab
+        self.security_tab = SecurityOptimizationTab(self.config)
+        self.addTab(self.security_tab, "Security & Optimization")
         
     def setup_connections(self):
         """Set up signal connections."""
         self.pdf_ops_tab.operation_requested.connect(self.operation_requested)
         self.content_tab.operation_requested.connect(self.operation_requested)
+        self.ai_tab.operation_requested.connect(self.operation_requested)
+        self.format_tab.operation_requested.connect(self.operation_requested)
+        self.security_tab.operation_requested.connect(self.operation_requested)
         
     def set_selected_files(self, files: List[Path]):
         """Set the selected files for all tabs."""
         self.pdf_ops_tab.set_selected_files(files)
         self.content_tab.set_selected_files(files)
+        self.ai_tab.set_selected_files(files)
+        self.format_tab.set_selected_files(files)
+        self.security_tab.set_selected_files(files)

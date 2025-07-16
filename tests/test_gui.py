@@ -270,6 +270,137 @@ class TestGUIIntegration:
 
 
 # Mock tests for when PyQt6 is not available
+@pytest.mark.skipif(not PYQT_AVAILABLE, reason="PyQt6 not available")
+class TestGUIDialogs:
+    """Test GUI dialogs and advanced components."""
+    
+    @pytest.fixture(scope="class")
+    def qapp(self):
+        """Create QApplication for testing."""
+        if not QApplication.instance():
+            app = QApplication([])
+        else:
+            app = QApplication.instance()
+        yield app
+        
+    @pytest.fixture
+    def config(self):
+        """Create test configuration."""
+        return Config()
+        
+    def test_settings_dialog_creation(self, qapp, config):
+        """Test settings dialog creation."""
+        from smart_pdf_toolkit.gui.settings_dialog import SettingsDialog
+        
+        dialog = SettingsDialog(config)
+        assert dialog.windowTitle() == "Settings"
+        assert dialog.config is config
+        assert dialog.tab_widget.count() >= 3  # General, OCR, AI tabs
+        dialog.close()
+        
+    def test_batch_processing_dialog_creation(self, qapp, config):
+        """Test batch processing dialog creation."""
+        from smart_pdf_toolkit.gui.batch_processing_dialog import BatchProcessingDialog
+        
+        dialog = BatchProcessingDialog(config)
+        assert dialog.windowTitle() == "Batch Processing"
+        assert dialog.config is config
+        assert dialog.tab_widget.count() == 2  # Configure and Queue tabs
+        dialog.close()
+        
+    def test_ai_services_tab(self, qapp, config):
+        """Test AI services tab functionality."""
+        from smart_pdf_toolkit.gui.ai_services_tab import AIServicesTab
+        
+        tab = AIServicesTab(config)
+        
+        # Test initial state
+        assert not tab.summarize_btn.isEnabled()
+        assert not tab.analyze_btn.isEnabled()
+        assert not tab.answer_btn.isEnabled()
+        assert not tab.translate_btn.isEnabled()
+        
+        # Test with files selected
+        test_files = [Path("test1.pdf"), Path("test2.pdf")]
+        tab.set_selected_files(test_files)
+        
+        assert tab.summarize_btn.isEnabled()
+        assert tab.analyze_btn.isEnabled()
+        assert tab.answer_btn.isEnabled()
+        assert tab.translate_btn.isEnabled()
+        
+        tab.close()
+        
+    def test_format_conversion_tab(self, qapp, config):
+        """Test format conversion tab functionality."""
+        from smart_pdf_toolkit.gui.format_conversion_tab import FormatConversionTab
+        
+        tab = FormatConversionTab(config)
+        
+        # Test initial state
+        assert not tab.pdf_to_images_btn.isEnabled()
+        assert not tab.images_to_pdf_btn.isEnabled()
+        assert not tab.pdf_to_office_btn.isEnabled()
+        assert not tab.pdf_to_html_btn.isEnabled()
+        
+        # Test with PDF files selected
+        test_files = [Path("test1.pdf"), Path("test2.pdf")]
+        tab.set_selected_files(test_files)
+        
+        assert tab.pdf_to_images_btn.isEnabled()
+        assert tab.pdf_to_office_btn.isEnabled()
+        assert tab.pdf_to_html_btn.isEnabled()
+        # images_to_pdf should still be disabled (needs image files)
+        assert not tab.images_to_pdf_btn.isEnabled()
+        
+        tab.close()
+        
+    def test_security_optimization_tab(self, qapp, config):
+        """Test security and optimization tab functionality."""
+        from smart_pdf_toolkit.gui.security_optimization_tab import SecurityOptimizationTab
+        
+        tab = SecurityOptimizationTab(config)
+        
+        # Test initial state
+        assert not tab.add_password_btn.isEnabled()
+        assert not tab.remove_password_btn.isEnabled()
+        assert not tab.add_watermark_btn.isEnabled()
+        assert not tab.optimize_btn.isEnabled()
+        assert not tab.sign_btn.isEnabled()
+        
+        # Test with files selected
+        test_files = [Path("test1.pdf"), Path("test2.pdf")]
+        tab.set_selected_files(test_files)
+        
+        assert tab.add_password_btn.isEnabled()
+        assert tab.remove_password_btn.isEnabled()
+        assert tab.add_watermark_btn.isEnabled()
+        assert tab.optimize_btn.isEnabled()
+        assert tab.sign_btn.isEnabled()
+        
+        tab.close()
+        
+    def test_batch_job_configuration(self, qapp, config):
+        """Test batch job configuration widget."""
+        from smart_pdf_toolkit.gui.batch_processing_dialog import BatchJobWidget
+        
+        widget = BatchJobWidget(config)
+        
+        # Test initial state
+        assert not widget.add_job_btn.isEnabled()
+        assert len(widget.selected_files) == 0
+        
+        # Test adding files
+        test_files = [Path("test1.pdf"), Path("test2.pdf")]
+        widget.selected_files = test_files
+        widget.update_files_list()
+        
+        assert widget.add_job_btn.isEnabled()
+        assert widget.files_list.count() == 2
+        
+        widget.close()
+
+
 @pytest.mark.skipif(PYQT_AVAILABLE, reason="PyQt6 is available")
 class TestGUIMocks:
     """Test GUI components with mocks when PyQt6 is not available."""
