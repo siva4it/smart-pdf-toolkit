@@ -105,6 +105,7 @@ Changelog = "https://github.com/siva4it/smart-pdf-toolkit/blob/main/CHANGELOG.md
 [project.scripts]
 smart-pdf = "smart_pdf_toolkit.cli.main:main"
 smart-pdf-api = "smart_pdf_toolkit.api.main:main"
+smart-pdf-gui = "smart_pdf_toolkit.gui.app:main"
 
 [project.entry-points."smart_pdf_toolkit.plugins"]
 # Plugin entry points will be registered here

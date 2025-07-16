@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional, List
 import logging
 
-from ...core.content_extraction import ContentExtractor
+from ...core.content_extractor import ContentExtractor
 from ...core.ocr_processor import OCRProcessor
 from ...core.exceptions import PDFToolkitError
 from ..utils import validate_pdf_file, get_output_path, show_progress
