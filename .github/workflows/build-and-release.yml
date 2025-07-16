@@ -1,0 +1,298 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tesseract-ocr tesseract-ocr-eng libreoffice wkhtmltopdf poppler-utils
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+    
+    - name: Run tests
+      run: |
+        pytest tests/ -v --cov=smart_pdf_toolkit --cov-report=xml
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  build-wheel:
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build wheel
+    
+    - name: Build wheel and source distribution
+      run: |
+        python -m build
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: python-packages
+        path: dist/
+
+  build-executables:
+    needs: test
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install system dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tesseract-ocr tesseract-ocr-eng libreoffice wkhtmltopdf poppler-utils
+    
+    - name: Install system dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install tesseract libreoffice wkhtmltopdf poppler
+    
+    - name: Install system dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        choco install tesseract
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+        pip install pyinstaller
+    
+    - name: Build CLI executable
+      run: |
+        python build/build.py --executable cli
+    
+    - name: Build API executable
+      run: |
+        python build/build.py --executable api
+    
+    - name: Upload executables
+      uses: actions/upload-artifact@v3
+      with:
+        name: executables-${{ matrix.os }}
+        path: dist/
+
+  build-docker:
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Login to Docker Hub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: smartpdftoolkit/smart-pdf-toolkit
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  create-installers:
+    needs: [build-wheel, build-executables]
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download executables
+      uses: actions/download-artifact@v3
+      with:
+        name: executables-${{ matrix.os }}
+        path: dist/
+    
+    - name: Create Linux AppImage
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        # Install AppImage tools
+        wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+        chmod +x appimagetool-x86_64.AppImage
+        
+        # Create AppDir structure
+        mkdir -p SmartPDFToolkit.AppDir/usr/bin
+        mkdir -p SmartPDFToolkit.AppDir/usr/share/applications
+        mkdir -p SmartPDFToolkit.AppDir/usr/share/icons/hicolor/256x256/apps
+        
+        # Copy executable
+        cp dist/smart-pdf-cli/smart-pdf SmartPDFToolkit.AppDir/usr/bin/
+        
+        # Create desktop file
+        cat > SmartPDFToolkit.AppDir/usr/share/applications/smart-pdf-toolkit.desktop << EOF
+        [Desktop Entry]
+        Type=Application
+        Name=Smart PDF Toolkit
+        Comment=Comprehensive PDF processing and analysis tool
+        Exec=smart-pdf
+        Icon=smart-pdf-toolkit
+        Categories=Office;Graphics;
+        EOF
+        
+        # Create AppImage
+        ./appimagetool-x86_64.AppImage SmartPDFToolkit.AppDir SmartPDFToolkit-x86_64.AppImage
+    
+    - name: Create Windows MSI
+      if: matrix.os == 'windows-latest'
+      run: |
+        # Install WiX Toolset
+        choco install wixtoolset
+        
+        # Create MSI (simplified - would need proper WiX configuration)
+        echo "MSI creation would be implemented here with WiX Toolset"
+    
+    - name: Create macOS DMG
+      if: matrix.os == 'macos-latest'
+      run: |
+        # Create DMG
+        mkdir -p dmg-contents
+        cp -r dist/smart-pdf-cli dmg-contents/
+        
+        # Create DMG
+        hdiutil create -volname "Smart PDF Toolkit" -srcfolder dmg-contents -ov -format UDZO SmartPDFToolkit.dmg
+    
+    - name: Upload installers
+      uses: actions/upload-artifact@v3
+      with:
+        name: installers-${{ matrix.os }}
+        path: |
+          *.AppImage
+          *.msi
+          *.dmg
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-wheel, build-executables, build-docker, create-installers]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          python-packages/*
+          executables-*/*
+          installers-*/*
+        generate_release_notes: true
+        draft: false
+        prerelease: ${{ contains(github.ref, '-') }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}
+        packages_dir: python-packages/
+
+  update-documentation:
+    if: github.ref == 'refs/heads/main'
+    needs: [test]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install documentation dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[docs]"
+    
+    - name: Build documentation
+      run: |
+        cd docs
+        make html
+    
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs/_build/html
