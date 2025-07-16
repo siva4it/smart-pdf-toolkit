@@ -2,7 +2,7 @@
 PDF operations endpoints.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Security
 from fastapi.responses import FileResponse
 from typing import List
 import logging
@@ -17,6 +17,7 @@ from ..models import (
 )
 from ..services import get_pdf_operations_service, get_file_manager
 from ..config import get_api_config
+from ..auth import get_current_active_user, get_current_write_user, User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -25,7 +26,8 @@ logger = logging.getLogger(__name__)
 @router.post("/upload", response_model=FileUploadResponse)
 async def upload_pdf(
     file: UploadFile = File(...),
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_write_user)
 ):
     """
     Upload a PDF file for processing.
@@ -60,7 +62,8 @@ async def upload_pdf(
 async def merge_pdfs(
     request: MergePDFRequest,
     pdf_service = Depends(get_pdf_operations_service),
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_write_user)
 ):
     """
     Merge multiple PDF files into a single document.
@@ -110,7 +113,8 @@ async def merge_pdfs(
 async def split_pdf(
     request: SplitPDFRequest,
     pdf_service = Depends(get_pdf_operations_service),
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_write_user)
 ):
     """
     Split a PDF into multiple documents based on page ranges.
@@ -157,7 +161,8 @@ async def split_pdf(
 async def rotate_pages(
     request: RotatePagesRequest,
     pdf_service = Depends(get_pdf_operations_service),
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_write_user)
 ):
     """
     Rotate specific pages in a PDF document.
@@ -202,7 +207,8 @@ async def extract_pages(
     file_id: str,
     pages: List[int],
     pdf_service = Depends(get_pdf_operations_service),
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_write_user)
 ):
     """
     Extract specific pages from a PDF document.
@@ -248,7 +254,8 @@ async def reorder_pages(
     file_id: str,
     new_order: List[int],
     pdf_service = Depends(get_pdf_operations_service),
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_write_user)
 ):
     """
     Reorder pages in a PDF document.
@@ -292,7 +299,8 @@ async def reorder_pages(
 @router.get("/download/{file_id}")
 async def download_file(
     file_id: str,
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     Download a processed PDF file.
@@ -333,7 +341,8 @@ async def download_file(
 @router.get("/info/{file_id}")
 async def get_file_info(
     file_id: str,
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     Get information about an uploaded or processed file.

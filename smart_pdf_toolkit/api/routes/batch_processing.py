@@ -2,7 +2,7 @@
 Batch processing endpoints.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Security
 import logging
 
 from ..models import (
@@ -12,6 +12,7 @@ from ..models import (
     OperationResult
 )
 from ..services import get_batch_processor_service, get_file_manager
+from ..auth import get_current_active_user, get_current_write_user, User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -21,7 +22,8 @@ logger = logging.getLogger(__name__)
 async def create_batch_job(
     request: BatchJobRequest,
     batch_service = Depends(get_batch_processor_service),
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_write_user)
 ):
     """
     Create a new batch processing job.
@@ -79,7 +81,8 @@ async def create_batch_job(
 @router.get("/jobs/{job_id}", response_model=BatchJobResponse)
 async def get_batch_job_status(
     job_id: str,
-    batch_service = Depends(get_batch_processor_service)
+    batch_service = Depends(get_batch_processor_service),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     Get the status of a batch processing job.
@@ -126,7 +129,8 @@ async def get_batch_job_status(
 @router.delete("/jobs/{job_id}")
 async def cancel_batch_job(
     job_id: str,
-    batch_service = Depends(get_batch_processor_service)
+    batch_service = Depends(get_batch_processor_service),
+    current_user: User = Security(get_current_write_user)
 ):
     """
     Cancel a running batch processing job.
@@ -161,7 +165,8 @@ async def cancel_batch_job(
 @router.get("/jobs/{job_id}/results")
 async def get_batch_job_results(
     job_id: str,
-    batch_service = Depends(get_batch_processor_service)
+    batch_service = Depends(get_batch_processor_service),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     Get detailed results of a completed batch job.
@@ -218,7 +223,8 @@ async def get_batch_job_results(
 
 @router.get("/jobs")
 async def list_batch_jobs(
-    batch_service = Depends(get_batch_processor_service)
+    batch_service = Depends(get_batch_processor_service),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     List all batch processing jobs.

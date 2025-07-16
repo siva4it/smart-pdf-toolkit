@@ -2,7 +2,7 @@
 AI services endpoints.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Security
 import logging
 
 from ..models import (
@@ -17,6 +17,7 @@ from ..models import (
     OperationResult
 )
 from ..services import get_ai_services_service, get_file_manager
+from ..auth import get_current_active_user, User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -26,7 +27,8 @@ logger = logging.getLogger(__name__)
 async def summarize_document(
     request: SummarizeRequest,
     ai_service = Depends(get_ai_services_service),
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     Generate a summary of a PDF document.
@@ -70,7 +72,8 @@ async def summarize_document(
 async def analyze_content(
     request: AnalyzeContentRequest,
     ai_service = Depends(get_ai_services_service),
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     Analyze content of a PDF document.
@@ -114,7 +117,8 @@ async def analyze_content(
 async def classify_document(
     request: ClassifyDocumentRequest,
     ai_service = Depends(get_ai_services_service),
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     Classify a PDF document based on its content.
@@ -158,7 +162,8 @@ async def classify_document(
 async def answer_question(
     request: AnswerQuestionRequest,
     ai_service = Depends(get_ai_services_service),
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     Answer a question about a PDF document.
@@ -202,7 +207,8 @@ async def answer_question(
 async def translate_content(
     request: TranslateContentRequest,
     ai_service = Depends(get_ai_services_service),
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     Translate content of a PDF document.
@@ -250,7 +256,8 @@ async def translate_content(
 async def start_chat_session(
     request: ChatSessionRequest,
     ai_service = Depends(get_ai_services_service),
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     Start an interactive chat session about a PDF document.
@@ -294,7 +301,8 @@ async def start_chat_session(
 @router.post("/chat/message", response_model=OperationResult)
 async def send_chat_message(
     request: ChatMessageRequest,
-    ai_service = Depends(get_ai_services_service)
+    ai_service = Depends(get_ai_services_service),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     Send a message in an interactive chat session.
@@ -333,7 +341,8 @@ async def send_chat_message(
 @router.get("/download/{file_id}")
 async def download_ai_result(
     file_id: str,
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     Download AI processing result file.

@@ -2,7 +2,7 @@
 Content extraction endpoints.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Security
 from fastapi.responses import FileResponse
 import logging
 import os
@@ -14,6 +14,7 @@ from ..models import (
     OperationResult
 )
 from ..services import get_content_extractor_service, get_file_manager
+from ..auth import get_current_active_user, User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -23,7 +24,8 @@ logger = logging.getLogger(__name__)
 async def extract_text(
     request: ExtractTextRequest,
     content_service = Depends(get_content_extractor_service),
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     Extract text content from a PDF document.
@@ -67,7 +69,8 @@ async def extract_text(
 async def extract_images(
     request: ExtractImagesRequest,
     content_service = Depends(get_content_extractor_service),
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     Extract images from a PDF document.
@@ -114,7 +117,8 @@ async def extract_images(
 async def extract_tables(
     request: ExtractTablesRequest,
     content_service = Depends(get_content_extractor_service),
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     Extract tables from a PDF document.
@@ -158,7 +162,8 @@ async def extract_tables(
 async def extract_metadata(
     file_id: str,
     content_service = Depends(get_content_extractor_service),
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     Extract metadata from a PDF document.
@@ -202,7 +207,8 @@ async def extract_metadata(
 async def extract_links(
     file_id: str,
     content_service = Depends(get_content_extractor_service),
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     Extract links from a PDF document.
@@ -246,7 +252,8 @@ async def extract_links(
 async def perform_ocr(
     file_id: str,
     languages: list = None,
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     Perform OCR on a PDF document.
@@ -293,7 +300,8 @@ async def perform_ocr(
 @router.get("/download/{file_id}")
 async def download_extracted_content(
     file_id: str,
-    file_manager = Depends(get_file_manager)
+    file_manager = Depends(get_file_manager),
+    current_user: User = Security(get_current_active_user)
 ):
     """
     Download extracted content file.
