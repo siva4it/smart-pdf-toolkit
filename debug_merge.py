@@ -28,10 +28,10 @@ def test_merge_functionality():
         logger.info("Starting merge functionality test...")
         
         # Import after path setup
-        from smart_pdf_toolkit.core.pdf_operations import PDFOperations
+        from smart_pdf_toolkit.core.pdf_operations import PDFOperationsManager
         
         # Initialize PDF operations
-        ops = PDFOperations()
+        ops = PDFOperationsManager()
         logger.info("PDFOperations initialized successfully")
         
         # Get test files from user

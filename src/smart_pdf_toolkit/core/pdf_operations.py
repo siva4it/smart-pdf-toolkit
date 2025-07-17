@@ -16,8 +16,13 @@ from .pdf_document import PDFDocumentValidator
 class PDFOperationsManager(IPDFOperations):
     """Implementation of basic PDF operations using PyMuPDF."""
     
-    def __init__(self):
-        """Initialize the PDF operations manager."""
+    def __init__(self, config=None):
+        """Initialize the PDF operations manager.
+        
+        Args:
+            config: Optional configuration object
+        """
+        self.config = config
         self.supported_rotations = [0, 90, 180, 270]
     
     def merge_pdfs(self, input_files: List[str], output_file: str) -> OperationResult:
