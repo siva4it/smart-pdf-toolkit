@@ -908,4 +908,3 @@ class TestAdvancedStressFramework:
         assert "passed_tests" in summary
         assert "total_operations" in summary
         assert "overall_success_rate" in summary
-"

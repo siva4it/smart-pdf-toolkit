@@ -7,7 +7,7 @@ from typing import List, Dict, Any
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox,
     QLineEdit, QCheckBox, QGroupBox, QFormLayout, QSpinBox, QSlider,
-    QMessageBox, QPasswordLineEdit, QTextEdit
+    QMessageBox, QTextEdit
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 
