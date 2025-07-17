@@ -14,7 +14,7 @@ from .exceptions import ConfigurationError
 @dataclass
 class ApplicationConfig:
     """Application-wide configuration."""
-    temp_directory: str = "/tmp/smart_pdf_toolkit"
+    temp_directory: str = None
     max_file_size: int = 100 * 1024 * 1024  # 100MB
     ocr_languages: list = None
     ai_api_key: Optional[str] = None
@@ -32,6 +32,10 @@ class ApplicationConfig:
             self.ocr_languages = ["eng"]
         if self.output_dir is None:
             self.output_dir = Path.home() / "smart_pdf_output"
+        if self.temp_directory is None:
+            # Use platform-appropriate temp directory
+            import tempfile
+            self.temp_directory = str(Path(tempfile.gettempdir()) / "smart_pdf_toolkit")
         if self.temp_dir is None:
             self.temp_dir = Path(self.temp_directory)
     
