@@ -1,0 +1,417 @@
+name: Security and Stress Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run comprehensive tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_types:
+        description: 'Test types to run (comma-separated: security,stress,benchmark)'
+        required: false
+        default: 'security,stress'
+      log_level:
+        description: 'Log level'
+        required: false
+        default: 'INFO'
+        type: choice
+        options:
+          - DEBUG
+          - INFO
+          - WARNING
+          - ERROR
+
+jobs:
+  security-tests:
+    name: Security Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tesseract-ocr tesseract-ocr-eng
+        sudo apt-get install -y poppler-utils
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-xdist pytest-timeout
+        pip install psutil pyyaml
+    
+    - name: Create test directories
+      run: |
+        mkdir -p test-results
+        mkdir -p test-artifacts
+    
+    - name: Run security tests
+      run: |
+        python -m pytest tests/security/test_comprehensive_suite.py::TestComprehensiveSecuritySuite \
+          -v --tb=short --timeout=300 \
+          --junitxml=test-results/security-results.xml \
+          --cov=smart_pdf_toolkit \
+          --cov-report=xml:test-results/security-coverage.xml \
+          --cov-report=html:test-artifacts/security-coverage-html
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+    
+    - name: Run comprehensive security framework tests
+      run: |
+        python tests/security/comprehensive_test_runner.py \
+          --test-types security \
+          --output test-results/comprehensive-security-results.json \
+          --log-level INFO \
+          --summary-only
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+    
+    - name: Upload security test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-test-results-${{ matrix.python-version }}
+        path: |
+          test-results/
+          test-artifacts/
+        retention-days: 30
+    
+    - name: Publish security test results
+      uses: dorny/test-reporter@v1
+      if: always()
+      with:
+        name: Security Tests (Python ${{ matrix.python-version }})
+        path: test-results/security-results.xml
+        reporter: java-junit
+
+  stress-tests:
+    name: Stress Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    
+    strategy:
+      matrix:
+        load-type: [light, medium, heavy]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tesseract-ocr tesseract-ocr-eng
+        sudo apt-get install -y poppler-utils
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-timeout psutil pyyaml
+    
+    - name: Create test directories
+      run: |
+        mkdir -p test-results
+        mkdir -p test-artifacts
+    
+    - name: Run stress tests - ${{ matrix.load-type }} load
+      run: |
+        python -m pytest tests/security/test_comprehensive_suite.py::TestComprehensiveStressSuite \
+          -v --tb=short --timeout=600 \
+          -k "test_${{ matrix.load-type }}_load or test_stress_test_report" \
+          --junitxml=test-results/stress-${{ matrix.load-type }}-results.xml
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+        STRESS_TEST_TYPE: ${{ matrix.load-type }}
+    
+    - name: Run comprehensive stress framework tests
+      run: |
+        python tests/security/comprehensive_test_runner.py \
+          --test-types stress \
+          --output test-results/comprehensive-stress-${{ matrix.load-type }}-results.json \
+          --log-level INFO \
+          --summary-only
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+    
+    - name: Upload stress test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: stress-test-results-${{ matrix.load-type }}
+        path: |
+          test-results/
+          test-artifacts/
+        retention-days: 30
+    
+    - name: Publish stress test results
+      uses: dorny/test-reporter@v1
+      if: always()
+      with:
+        name: Stress Tests (${{ matrix.load-type }} load)
+        path: test-results/stress-${{ matrix.load-type }}-results.xml
+        reporter: java-junit
+
+  benchmark-tests:
+    name: Benchmark Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tesseract-ocr tesseract-ocr-eng
+        sudo apt-get install -y poppler-utils
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest psutil pyyaml
+    
+    - name: Create test directories
+      run: |
+        mkdir -p test-results
+        mkdir -p test-artifacts
+    
+    - name: Run benchmark tests
+      run: |
+        python tests/security/comprehensive_test_runner.py \
+          --test-types benchmark \
+          --output test-results/benchmark-results.json \
+          --log-level INFO
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+    
+    - name: Generate benchmark report
+      run: |
+        python -c "
+        import json
+        with open('test-results/benchmark-results.json', 'r') as f:
+            results = json.load(f)
+        
+        # Extract benchmark summary
+        benchmark_results = results.get('results', {}).get('benchmark', {})
+        
+        print('# Benchmark Results Summary')
+        print()
+        
+        for test_name, test_result in benchmark_results.items():
+            if isinstance(test_result, dict):
+                print(f'## {test_name}')
+                print(f'- Operations per second: {test_result.get(\"operations_per_second\", 0):.2f}')
+                print(f'- Success rate: {test_result.get(\"successful_operations\", 0) / max(test_result.get(\"total_operations\", 1), 1) * 100:.1f}%')
+                print(f'- Peak memory: {test_result.get(\"peak_memory_mb\", 0):.1f} MB')
+                print()
+        " > test-artifacts/benchmark-summary.md
+    
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: benchmark-test-results
+        path: |
+          test-results/
+          test-artifacts/
+        retention-days: 90
+
+  comprehensive-tests:
+    name: Comprehensive Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && contains(github.event.inputs.test_types, 'security,stress,benchmark'))
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tesseract-ocr tesseract-ocr-eng
+        sudo apt-get install -y poppler-utils
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest psutil pyyaml
+    
+    - name: Create test directories
+      run: |
+        mkdir -p test-results
+        mkdir -p test-artifacts
+    
+    - name: Run comprehensive test suite
+      run: |
+        python tests/security/comprehensive_test_runner.py \
+          --test-types security stress benchmark \
+          --output test-results/comprehensive-results.json \
+          --log-level ${{ github.event.inputs.log_level || 'INFO' }}
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+    
+    - name: Generate comprehensive report
+      run: |
+        python -c "
+        import json
+        import sys
+        
+        with open('test-results/comprehensive-results.json', 'r') as f:
+            results = json.load(f)
+        
+        report = results.get('comprehensive_report', {})
+        executive_summary = report.get('executive_summary', {})
+        
+        print('# Comprehensive Test Results')
+        print()
+        print(f'**Overall Status:** {executive_summary.get(\"overall_status\", \"UNKNOWN\")}')
+        print(f'**Performance Score:** {executive_summary.get(\"performance_score\", 0)}/100')
+        print(f'**Duration:** {executive_summary.get(\"total_duration_minutes\", 0):.1f} minutes')
+        print()
+        
+        print('## Issues Summary')
+        print(f'- Critical: {executive_summary.get(\"critical_issues\", 0)}')
+        print(f'- High: {executive_summary.get(\"high_issues\", 0)}')
+        print(f'- Medium: {executive_summary.get(\"medium_issues\", 0)}')
+        print()
+        
+        # Risk assessment
+        risk_assessment = report.get('risk_assessment', {})
+        print('## Risk Assessment')
+        print(f'- Overall Risk: {risk_assessment.get(\"overall_risk_level\", \"UNKNOWN\")}')
+        print(f'- Security Risk: {risk_assessment.get(\"security_risk\", \"UNKNOWN\")}')
+        print(f'- Performance Risk: {risk_assessment.get(\"performance_risk\", \"UNKNOWN\")}')
+        print()
+        
+        # Compliance
+        compliance = report.get('compliance_status', {})
+        print('## Compliance Status')
+        print(f'- Overall: {compliance.get(\"overall_compliance\", \"UNKNOWN\")}')
+        print(f'- Security: {compliance.get(\"security_compliance\", \"UNKNOWN\")}')
+        print(f'- Performance: {compliance.get(\"performance_compliance\", \"UNKNOWN\")}')
+        print()
+        
+        # Recommendations
+        recommendations = report.get('recommendations', [])
+        if recommendations:
+            print('## Top Recommendations')
+            for i, rec in enumerate(recommendations[:5], 1):
+                print(f'{i}. {rec}')
+        
+        # Set exit code based on results
+        critical_issues = executive_summary.get('critical_issues', 0)
+        overall_status = executive_summary.get('overall_status', 'PASS')
+        
+        if critical_issues > 0 or overall_status == 'CRITICAL':
+            sys.exit(2)
+        elif overall_status in ['HIGH_RISK', 'MEDIUM_RISK']:
+            sys.exit(1)
+        else:
+            sys.exit(0)
+        " > test-artifacts/comprehensive-report.md
+    
+    - name: Upload comprehensive test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: comprehensive-test-results
+        path: |
+          test-results/
+          test-artifacts/
+        retention-days: 90
+    
+    - name: Comment PR with results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const path = 'test-artifacts/comprehensive-report.md';
+          
+          if (fs.existsSync(path)) {
+            const report = fs.readFileSync(path, 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🔒 Security & Stress Test Results\n\n${report}`
+            });
+          }
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run Bandit security scan
+      run: |
+        pip install bandit[toml]
+        bandit -r smart_pdf_toolkit/ -f json -o security-scan-results.json || true
+        bandit -r smart_pdf_toolkit/ -f txt
+    
+    - name: Run Safety check
+      run: |
+        pip install safety
+        safety check --json --output safety-results.json || true
+        safety check
+    
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-scan-results
+        path: |
+          security-scan-results.json
+          safety-results.json
+        retention-days: 30
