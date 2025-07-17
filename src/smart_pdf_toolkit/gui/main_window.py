@@ -133,9 +133,18 @@ class OperationWorker(QThread):
         if pages:
             # Parse page ranges
             page_ranges = self._parse_page_ranges(pages)
-            result = pdf_ops.split_pdf(file_path, output_path, page_ranges)
+            result = pdf_ops.split_pdf(file_path, page_ranges, output_path)
         else:
-            result = pdf_ops.split_pdf(file_path, output_path)
+            # If no page ranges specified, split each page individually
+            # First get the total page count
+            import fitz
+            doc = fitz.open(file_path)
+            total_pages = doc.page_count
+            doc.close()
+            
+            # Create page ranges for each individual page
+            page_ranges = [(i, i) for i in range(1, total_pages + 1)]
+            result = pdf_ops.split_pdf(file_path, page_ranges, output_path)
         self.progress_updated.emit(90, "Finalizing split...")
         
     def _execute_rotate(self, pdf_ops):
@@ -213,17 +222,18 @@ class OperationWorker(QThread):
                         
         self.progress_updated.emit(90, "Saving extracted tables...")
         
-    def _parse_page_ranges(self, pages_str: str) -> List[int]:
-        """Parse page ranges string like '1-3,5,7-9' into list of page numbers."""
-        pages = []
+    def _parse_page_ranges(self, pages_str: str) -> List[Tuple[int, int]]:
+        """Parse page ranges string like '1-3,5,7-9' into list of page range tuples."""
+        ranges = []
         for part in pages_str.split(','):
             part = part.strip()
             if '-' in part:
                 start, end = map(int, part.split('-'))
-                pages.extend(range(start, end + 1))
+                ranges.append((start, end))
             else:
-                pages.append(int(part))
-        return sorted(set(pages))
+                page = int(part)
+                ranges.append((page, page))  # Single page as range
+        return ranges
         
     def _parse_rotations(self, rotations_str: str) -> dict:
         """Parse rotations string like '1:90,3:180,5-7:270' into dict."""

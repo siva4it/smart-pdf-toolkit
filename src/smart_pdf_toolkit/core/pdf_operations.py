@@ -118,7 +118,7 @@ class PDFOperationsManager(IPDFOperations):
                 errors=[str(e)]
             )
     
-    def split_pdf(self, input_file: str, page_ranges: List[Tuple[int, int]]) -> OperationResult:
+    def split_pdf(self, input_file: str, page_ranges: List[Tuple[int, int]], output_dir: str = None) -> OperationResult:
         """
         Split a PDF into separate documents based on page ranges.
         
@@ -126,6 +126,7 @@ class PDFOperationsManager(IPDFOperations):
             input_file: Path to the PDF file to split
             page_ranges: List of tuples (start_page, end_page) for each output file
                         Pages are 1-indexed
+            output_dir: Optional output directory (defaults to same directory as input file)
             
         Returns:
             OperationResult with split operation details
@@ -171,7 +172,13 @@ class PDFOperationsManager(IPDFOperations):
                 # Create output files
                 input_path = Path(input_file)
                 base_name = input_path.stem
-                output_dir = input_path.parent
+                
+                # Use provided output_dir or default to input file's directory
+                if output_dir:
+                    output_directory = Path(output_dir)
+                    output_directory.mkdir(parents=True, exist_ok=True)
+                else:
+                    output_directory = input_path.parent
                 
                 for i, (start_page, end_page) in enumerate(page_ranges):
                     try:
@@ -186,7 +193,7 @@ class PDFOperationsManager(IPDFOperations):
                         )
                         
                         # Generate output filename
-                        output_file = output_dir / f"{base_name}_part_{i+1}_pages_{start_page}-{end_page}.pdf"
+                        output_file = output_directory / f"{base_name}_part_{i+1}_pages_{start_page}-{end_page}.pdf"
                         
                         # Save split document
                         output_doc.save(str(output_file))
