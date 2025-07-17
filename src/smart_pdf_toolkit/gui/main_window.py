@@ -50,11 +50,11 @@ class OperationWorker(QThread):
             
             # Initialize core processors
             pdf_ops = PDFOperationsManager(self.config)
-            content_extractor = ContentExtractor(self.config)
+            content_extractor = ContentExtractor(str(self.config.temp_dir))
             format_converter = FormatConverter(self.config)
             security_manager = SecurityManager(self.config)
             optimization_engine = OptimizationEngine(self.config)
-            ai_services = AIServices(self.config)
+            ai_services = AIServices({'ai_api_key': getattr(self.config, 'ai_api_key', None)})
             
             self.progress_updated.emit(20, "Processing files...")
             
