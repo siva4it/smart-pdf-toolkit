@@ -23,16 +23,23 @@ wheels/
 # Testing
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
 .tox/
+.nox/
 .cache
 nosetests.xml
 coverage.xml
 *.cover
+*.py,cover
 .hypothesis/
 
 # Environments
 .env
+.env.local
+.env.development
+.env.production
+.env.testing
 .venv
 env/
 venv/
@@ -56,7 +63,81 @@ venv.bak/
 ehthumbs.db
 Thumbs.db
 
-# Project specific
+# Documentation
+docs/_build/
+docs/api/_build/
+docs/.doctrees/
+/site
+
+# Project specific directories
+uploads/
 temp/
+output/
+logs/
+test_output/
+test_temp/
+test_uploads/
+workflow_output/
+input_documents/
+
+# File types to ignore
 *.pdf
+*.docx
+*.xlsx
+*.pptx
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
 *.log
+
+# Except for test fixtures and examples
+!tests/fixtures/*.pdf
+!tests/fixtures/*.docx
+!assets/data/*.pdf
+!examples/data/*.pdf
+
+# Development tools
+.pre-commit-config.yaml.bak
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+
+# Deployment specific
+.env.deploy
+deployment/secrets/
+deployment/terraform/.terraform/
+deployment/terraform/terraform.tfstate*
+deployment/kubernetes/secrets/
+
+# Build artifacts
+tools/build/dist/
+tools/build/build/
+*.whl
+*.tar.gz
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Performance and security reports
+benchmark_results.json
+performance_reports/
+bandit_report.json
+safety_report.json
+locust_reports/
+
+# Local configuration overrides
+config/local/
+local_config.py
+local_settings.py

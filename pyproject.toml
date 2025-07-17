@@ -113,10 +113,10 @@ smart-pdf-gui = "smart_pdf_toolkit.gui.app:main"
 # Plugin entry points will be registered here
 
 [tool.setuptools]
-package-dir = {"" = "."}
+package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]
 include = ["smart_pdf_toolkit*"]
 exclude = ["tests*", "docs*", "examples*"]
 
@@ -201,7 +201,7 @@ filterwarnings = [
 
 # Coverage configuration
 [tool.coverage.run]
-source = ["smart_pdf_toolkit"]
+source = ["src/smart_pdf_toolkit"]
 omit = [
     "*/tests/*",
     "*/test_*",
