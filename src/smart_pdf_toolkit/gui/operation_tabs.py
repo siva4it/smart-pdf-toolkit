@@ -38,9 +38,15 @@ class PDFOperationsTab(QWidget):
         merge_group = QGroupBox("Merge PDFs")
         merge_layout = QFormLayout(merge_group)
         
+        # Output file selection
+        merge_file_layout = QHBoxLayout()
         self.merge_output_edit = QLineEdit()
         self.merge_output_edit.setPlaceholderText("merged_output.pdf")
-        merge_layout.addRow("Output file:", self.merge_output_edit)
+        self.merge_browse_btn = QPushButton("Browse...")
+        self.merge_browse_btn.setMaximumWidth(80)
+        merge_file_layout.addWidget(self.merge_output_edit)
+        merge_file_layout.addWidget(self.merge_browse_btn)
+        merge_layout.addRow("Output file:", merge_file_layout)
         
         self.merge_btn = QPushButton("Merge Selected Files")
         self.merge_btn.setEnabled(False)
@@ -56,9 +62,15 @@ class PDFOperationsTab(QWidget):
         self.split_pages_edit.setPlaceholderText("1-3,5,7-9 or leave empty for all pages")
         split_layout.addRow("Page ranges:", self.split_pages_edit)
         
+        # Output directory selection
+        split_dir_layout = QHBoxLayout()
         self.split_output_edit = QLineEdit()
         self.split_output_edit.setPlaceholderText("split_output/")
-        split_layout.addRow("Output directory:", self.split_output_edit)
+        self.split_browse_btn = QPushButton("Browse...")
+        self.split_browse_btn.setMaximumWidth(80)
+        split_dir_layout.addWidget(self.split_output_edit)
+        split_dir_layout.addWidget(self.split_browse_btn)
+        split_layout.addRow("Output directory:", split_dir_layout)
         
         self.split_btn = QPushButton("Split Selected File")
         self.split_btn.setEnabled(False)
@@ -74,9 +86,15 @@ class PDFOperationsTab(QWidget):
         self.rotate_pages_edit.setPlaceholderText("1:90,3:180,5-7:270")
         rotate_layout.addRow("Page rotations:", self.rotate_pages_edit)
         
+        # Output file selection
+        rotate_file_layout = QHBoxLayout()
         self.rotate_output_edit = QLineEdit()
         self.rotate_output_edit.setPlaceholderText("rotated_output.pdf")
-        rotate_layout.addRow("Output file:", self.rotate_output_edit)
+        self.rotate_browse_btn = QPushButton("Browse...")
+        self.rotate_browse_btn.setMaximumWidth(80)
+        rotate_file_layout.addWidget(self.rotate_output_edit)
+        rotate_file_layout.addWidget(self.rotate_browse_btn)
+        rotate_layout.addRow("Output file:", rotate_file_layout)
         
         self.rotate_btn = QPushButton("Rotate Pages")
         self.rotate_btn.setEnabled(False)
@@ -91,6 +109,11 @@ class PDFOperationsTab(QWidget):
         self.merge_btn.clicked.connect(self.on_merge_clicked)
         self.split_btn.clicked.connect(self.on_split_clicked)
         self.rotate_btn.clicked.connect(self.on_rotate_clicked)
+        
+        # Browse button connections
+        self.merge_browse_btn.clicked.connect(self.on_merge_browse_clicked)
+        self.split_browse_btn.clicked.connect(self.on_split_browse_clicked)
+        self.rotate_browse_btn.clicked.connect(self.on_rotate_browse_clicked)
         
     def set_selected_files(self, files: List[Path]):
         """Set the selected files."""
@@ -165,6 +188,38 @@ class PDFOperationsTab(QWidget):
         }
         
         self.operation_requested.emit('rotate', params)
+    
+    def on_merge_browse_clicked(self):
+        """Handle merge browse button click."""
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Merged PDF As",
+            self.merge_output_edit.text() or "merged_output.pdf",
+            "PDF Files (*.pdf);;All Files (*)"
+        )
+        if file_path:
+            self.merge_output_edit.setText(file_path)
+    
+    def on_split_browse_clicked(self):
+        """Handle split browse button click."""
+        dir_path = QFileDialog.getExistingDirectory(
+            self,
+            "Select Output Directory for Split Files",
+            self.split_output_edit.text() or str(Path.home())
+        )
+        if dir_path:
+            self.split_output_edit.setText(dir_path)
+    
+    def on_rotate_browse_clicked(self):
+        """Handle rotate browse button click."""
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Rotated PDF As",
+            self.rotate_output_edit.text() or "rotated_output.pdf",
+            "PDF Files (*.pdf);;All Files (*)"
+        )
+        if file_path:
+            self.rotate_output_edit.setText(file_path)
 
 
 class ContentExtractionTab(QWidget):
