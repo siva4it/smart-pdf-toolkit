@@ -617,4 +617,3 @@ class TestSecurityOrchestrator:
         compliance = report["compliance_status"]
         assert "standards" in compliance
         assert "overall_compliance" in compliance
-"

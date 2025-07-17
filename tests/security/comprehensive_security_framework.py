@@ -33,20 +33,20 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class SecurityTestResult:
-    \"\"\"Result of a security test.\"\"\"
+    """Result of a security test."""
     test_name: str
     passed: bool
     execution_time: float
     memory_usage: int
     error_message: Optional[str] = None
     details: Optional[Dict[str, Any]] = None
-    severity: str = \"medium\"
-    category: str = \"general\"
+    severity: str = "medium"
+    category: str = "general"
 
 
 @dataclass
 class StressTestMetrics:
-    \"\"\"Metrics collected during stress testing.\"\"\"
+    """Metrics collected during stress testing."""
     peak_memory_mb: float
     avg_memory_mb: float
     peak_cpu_percent: float
@@ -61,17 +61,17 @@ class StressTestMetrics:
 
 @dataclass
 class SecurityTestSuite:
-    \"\"\"Configuration for a security test suite.\"\"\"
+    """Configuration for a security test suite."""
     name: str
     tests: List[str] = field(default_factory=list)
-    severity: str = \"medium\"
+    severity: str = "medium"
     timeout: int = 300  # 5 minutes default
     max_memory_mb: int = 1024  # 1GB default
     enabled: bool = True
 
 
 class SecurityTestOrchestrator:
-    \"\"\"Orchestrates comprehensive security and stress testing.\"\"\"
+    """Orchestrates comprehensive security and stress testing."""
     
     def __init__(self, config: Config):
         self.config = config
@@ -85,13 +85,13 @@ class SecurityTestOrchestrator:
         
         # Test suites configuration
         self.test_suites = {
-            \"password_security\": SecurityTestSuite(
-                name=\"Password Security Tests\",
-                tests=[\"test_password_strength\", \"test_password_bypass\", \"test_brute_force_protection\"],
-                severity=\"high\",
+            "password_security": SecurityTestSuite(
+                name="Password Security Tests",
+                tests=["test_password_strength", "test_password_bypass", "test_brute_force_protection"],
+                severity="high",
                 timeout=600
             ),
-            \"input_validation\": SecurityTestSuite(
+            "input_validation": SecurityTestSuite(
                 name=\"Input Validation Tests\",
                 tests=[\"test_malicious_inputs\", \"test_buffer_overflow\", \"test_injection_attacks\"],
                 severity=\"critical\",

@@ -15,6 +15,95 @@ from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer
 from PyQt6.QtGui import QFont
 
 from ..core.config import Config
+from ..core.batch_processor import BatchProcessor
+
+
+class BatchWorker(QThread):
+    """Worker thread for batch processing operations."""
+    
+    job_progress = pyqtSignal(int, int, str)  # job_index, progress, message
+    job_completed = pyqtSignal(int, bool, str)  # job_index, success, message
+    all_completed = pyqtSignal()
+    
+    def __init__(self, jobs: List['BatchJobItem'], config: Config):
+        super().__init__()
+        self.jobs = jobs
+        self.config = config
+        self.batch_processor = BatchProcessor(config)
+        self.cancelled = False
+        
+    def run(self):
+        """Execute batch processing."""
+        try:
+            for i, job in enumerate(self.jobs):
+                if self.cancelled:
+                    break
+                    
+                self.job_progress.emit(i, 0, f"Starting {job.operation}...")
+                
+                try:
+                    # Process the job based on operation type
+                    success = self._process_job(job, i)
+                    
+                    if success:
+                        self.job_completed.emit(i, True, "Completed successfully")
+                    else:
+                        self.job_completed.emit(i, False, "Processing failed")
+                        
+                except Exception as e:
+                    self.job_completed.emit(i, False, str(e))
+                    
+            if not self.cancelled:
+                self.all_completed.emit()
+                
+        except Exception as e:
+            # Handle overall batch processing error
+            pass
+            
+    def _process_job(self, job: 'BatchJobItem', job_index: int) -> bool:
+        """Process a single batch job."""
+        try:
+            # Create batch job configuration
+            batch_job = {
+                'operation': self._map_operation_name(job.operation),
+                'files': job.files,
+                'params': job.params
+            }
+            
+            # Progress callback
+            def progress_callback(progress: int, message: str):
+                self.job_progress.emit(job_index, progress, message)
+                
+            # Execute the batch job
+            result = self.batch_processor.process_job(batch_job, progress_callback)
+            return result.success if result else False
+            
+        except Exception as e:
+            return False
+            
+    def _map_operation_name(self, gui_operation: str) -> str:
+        """Map GUI operation names to core operation names."""
+        mapping = {
+            "Extract Text": "extract_text",
+            "Extract Images": "extract_images", 
+            "Extract Tables": "extract_tables",
+            "Merge PDFs": "merge",
+            "Split PDFs": "split",
+            "Rotate Pages": "rotate",
+            "Add Password": "add_password",
+            "Remove Password": "remove_password",
+            "Add Watermark": "add_watermark",
+            "Optimize PDF": "optimize",
+            "Convert to Images": "pdf_to_images",
+            "OCR Processing": "ocr",
+            "AI Summarization": "summarize",
+            "AI Analysis": "analyze"
+        }
+        return mapping.get(gui_operation, gui_operation.lower().replace(" ", "_"))
+        
+    def cancel(self):
+        """Cancel batch processing."""
+        self.cancelled = True
 
 
 class BatchJobItem:
@@ -282,9 +371,12 @@ class BatchJobWidget(QWidget):
 class BatchQueueWidget(QWidget):
     """Widget for managing the batch processing queue."""
     
-    def __init__(self, parent=None):
+    def __init__(self, config: Config, parent=None):
         super().__init__(parent)
+        self.config = config
         self.jobs: List[BatchJobItem] = []
+        self.batch_worker: Optional[BatchWorker] = None
+        self.current_job_index = 0
         
         self.init_ui()
         self.setup_connections()
@@ -361,12 +453,70 @@ class BatchQueueWidget(QWidget):
             
     def start_processing(self):
         """Start batch processing."""
-        # TODO: Implement actual batch processing
+        if not self.jobs:
+            QMessageBox.warning(self, "Warning", "No jobs in queue to process.")
+            return
+            
         self.start_btn.setEnabled(False)
         self.pause_btn.setEnabled(True)
         
-        # Simulate processing
-        QMessageBox.information(self, "Processing", "Batch processing started!")
+        # Start processing jobs
+        self.current_job_index = 0
+        self.process_next_job()
+        
+    def process_next_job(self):
+        """Process the next job in the queue."""
+        if self.current_job_index >= len(self.jobs):
+            # All jobs completed
+            self.start_btn.setEnabled(True)
+            self.pause_btn.setEnabled(False)
+            self.overall_progress.setValue(100)
+            return
+            
+        # Start batch worker for remaining jobs
+        remaining_jobs = self.jobs[self.current_job_index:]
+        self.batch_worker = BatchWorker(remaining_jobs, self.config)
+        self.batch_worker.job_progress.connect(self.on_job_progress)
+        self.batch_worker.job_completed.connect(self.on_job_completed)
+        self.batch_worker.all_completed.connect(self.on_all_completed)
+        self.batch_worker.start()
+        
+    def on_job_progress(self, job_index: int, progress: int, message: str):
+        """Handle job progress updates."""
+        actual_index = self.current_job_index + job_index
+        if actual_index < len(self.jobs):
+            self.jobs[actual_index].progress = progress
+            self.update_jobs_table()
+            
+        # Update overall progress
+        overall_progress = ((actual_index * 100) + progress) // len(self.jobs)
+        self.overall_progress.setValue(overall_progress)
+        
+    def on_job_completed(self, job_index: int, success: bool, message: str):
+        """Handle job completion."""
+        actual_index = self.current_job_index + job_index
+        if actual_index < len(self.jobs):
+            self.jobs[actual_index].status = "Completed" if success else "Failed"
+            self.jobs[actual_index].error_message = message if not success else ""
+            self.jobs[actual_index].progress = 100
+            self.update_jobs_table()
+            
+    def on_all_completed(self):
+        """Handle completion of all jobs."""
+        self.start_btn.setEnabled(True)
+        self.pause_btn.setEnabled(False)
+        self.overall_progress.setValue(100)
+        
+        # Show completion message
+        completed_jobs = sum(1 for job in self.jobs if job.status == "Completed")
+        failed_jobs = len(self.jobs) - completed_jobs
+        
+        QMessageBox.information(
+            self, "Batch Processing Complete",
+            f"Batch processing completed!\n\n"
+            f"Completed: {completed_jobs}\n"
+            f"Failed: {failed_jobs}"
+        )
         
     def pause_processing(self):
         """Pause batch processing."""
@@ -414,7 +564,7 @@ class BatchProcessingDialog(QDialog):
         self.tab_widget.addTab(self.job_widget, "Configure Jobs")
         
         # Queue management tab
-        self.queue_widget = BatchQueueWidget()
+        self.queue_widget = BatchQueueWidget(self.config)
         self.tab_widget.addTab(self.queue_widget, "Processing Queue")
         
         layout.addWidget(self.tab_widget)

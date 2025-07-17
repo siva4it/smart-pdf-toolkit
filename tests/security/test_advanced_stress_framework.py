@@ -261,7 +261,7 @@ class StressTestFramework:
                             operation_times.append(duration)
                             operation_results.append(result)
                         except Exception as e:
-                            operation_results.append(OperationResult(False, f"Exception: {e}\"))
+                            operation_results.append(OperationResult(False, f"Exception: {e}"))
                         futures.remove(future)
                     
                     # Control operation rate if specified
@@ -275,7 +275,7 @@ class StressTestFramework:
                         operation_times.append(duration)
                         operation_results.append(result)
                     except Exception as e:
-                        operation_results.append(OperationResult(False, f\"Exception: {e}\"))
+                        operation_results.append(OperationResult(False, f"Exception: {e}"))
             
             # Ramp down phase
             if config.ramp_down_seconds > 0:

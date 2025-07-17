@@ -191,10 +191,10 @@ class TestAdvancedMaliciousPDFHandling:
         """Test handling of oversized PDF files."""
         # Create oversized PDF (10MB for testing)
         oversized_pdf = malicious_pdf_generator.create_oversized_pdf(
-            security_temp_dir / \"oversized.pdf\", size_mb=10
+            security_temp_dir / "oversized.pdf", size_mb=10
         )
         
-        output_path = security_temp_dir / \"oversized_output.pdf\"
+        output_path = security_temp_dir / "oversized_output.pdf"
         
         # Should handle oversized files gracefully
         result = pdf_operations_secure.rotate_pdf(
@@ -205,18 +205,18 @@ class TestAdvancedMaliciousPDFHandling:
         if not result.success:
             assert any(keyword in result.message.lower() for keyword in 
                       ['size', 'large', 'memory', 'limit', 'timeout'])
-            security_logger.info(f\"Oversized PDF handled gracefully: {result.message}\")
+            security_logger.info(f"Oversized PDF handled gracefully: {result.message}")
         else:
-            security_logger.info(\"Oversized PDF processed successfully\")
+            security_logger.info("Oversized PDF processed successfully")
     
     def test_deeply_nested_pdf_handling(self, pdf_operations_secure, malicious_pdf_generator, security_temp_dir, security_logger):
         """Test handling of deeply nested PDF structures."""
         # Create deeply nested PDF (100 levels for testing)
         nested_pdf = malicious_pdf_generator.create_deeply_nested_pdf(
-            security_temp_dir / \"nested.pdf\", nesting_depth=100
+            security_temp_dir / "nested.pdf", nesting_depth=100
         )
         
-        output_path = security_temp_dir / \"nested_output.pdf\"
+        output_path = security_temp_dir / "nested_output.pdf"
         
         # Should handle nested structures without stack overflow
         result = pdf_operations_secure.rotate_pdf(
@@ -229,7 +229,7 @@ class TestAdvancedMaliciousPDFHandling:
         if not result.success:
             assert any(keyword in result.message.lower() for keyword in 
                       ['nested', 'depth', 'recursion', 'structure', 'invalid'])
-            security_logger.info(f\"Nested PDF handled gracefully: {result.message}\")
+            security_logger.info(f"Nested PDF handled gracefully: {result.message}")
     
     def test_malformed_pdf_handling(self, pdf_operations_secure, malicious_pdf_generator, security_temp_dir, security_logger):
         """Test handling of various malformed PDF files."""
@@ -237,11 +237,11 @@ class TestAdvancedMaliciousPDFHandling:
         
         for malformation_type in malformation_types:
             malformed_pdf = malicious_pdf_generator.create_malformed_pdf(
-                security_temp_dir / f\"malformed_{malformation_type}.pdf\",
+                security_temp_dir / f"malformed_{malformation_type}.pdf",
                 malformation_type=malformation_type
             )
             
-            output_path = security_temp_dir / f\"malformed_output_{malformation_type}.pdf\"
+            output_path = security_temp_dir / f"malformed_output_{malformation_type}.pdf"
             
             # Should handle malformed PDFs gracefully
             result = pdf_operations_secure.rotate_pdf(
@@ -252,17 +252,17 @@ class TestAdvancedMaliciousPDFHandling:
             assert isinstance(result, OperationResult)
             
             if not result.success:
-                assert len(result.message) > 0, f\"No error message for {malformation_type}\"
-                security_logger.info(f\"Malformed PDF ({malformation_type}) handled: {result.message}\")
+                assert len(result.message) > 0, f"No error message for {malformation_type}"
+                security_logger.info(f"Malformed PDF ({malformation_type}) handled: {result.message}")
     
     def test_javascript_pdf_handling(self, pdf_operations_secure, malicious_pdf_generator, security_temp_dir, security_logger):
         """Test handling of PDFs with JavaScript content."""
         # Create PDF with potentially malicious JavaScript
         js_pdf = malicious_pdf_generator.create_javascript_pdf(
-            security_temp_dir / \"javascript.pdf\", malicious_js=True
+            security_temp_dir / "javascript.pdf", malicious_js=True
         )
         
-        output_path = security_temp_dir / \"javascript_output.pdf\"
+        output_path = security_temp_dir / "javascript_output.pdf"
         
         # Should handle JavaScript PDFs safely
         result = pdf_operations_secure.rotate_pdf(
@@ -272,15 +272,15 @@ class TestAdvancedMaliciousPDFHandling:
         # Should either process safely or reject with appropriate message
         assert isinstance(result, OperationResult)
         
-        if not result.success and \"javascript\" in result.message.lower():
-            security_logger.info(f\"JavaScript PDF rejected appropriately: {result.message}\")
+        if not result.success and "javascript" in result.message.lower():
+            security_logger.info(f"JavaScript PDF rejected appropriately: {result.message}")
         else:
-            security_logger.info(\"JavaScript PDF processed (JavaScript likely ignored)\")
+            security_logger.info("JavaScript PDF processed (JavaScript likely ignored)")
     
     def test_zip_bomb_pdf_protection(self, pdf_operations_secure, security_temp_dir, security_logger):
         """Test protection against PDF zip bomb attacks."""
         # Create a PDF that could expand significantly when processed
-        zip_bomb_pdf = security_temp_dir / \"zip_bomb.pdf\"
+        zip_bomb_pdf = security_temp_dir / "zip_bomb.pdf"
         
         with open(zip_bomb_pdf, 'wb') as f:
             f.write(b'%PDF-1.4\n')
@@ -308,7 +308,7 @@ class TestAdvancedMaliciousPDFHandling:
             f.write(str(f.tell() + 20).encode())
             f.write(b'\n%%EOF\n')
         
-        output_path = security_temp_dir / \"zip_bomb_output.pdf\"
+        output_path = security_temp_dir / "zip_bomb_output.pdf"
         
         # Should handle potential zip bombs safely
         import time
@@ -321,15 +321,15 @@ class TestAdvancedMaliciousPDFHandling:
         processing_time = time.time() - start_time
         
         # Should not take excessive time or memory
-        assert processing_time < 60, f\"Processing took too long: {processing_time}s\"
+        assert processing_time < 60, f"Processing took too long: {processing_time}s"
         assert isinstance(result, OperationResult)
         
-        security_logger.info(f\"Zip bomb PDF processed in {processing_time:.2f}s: {result.success}\")
+        security_logger.info(f"Zip bomb PDF processed in {processing_time:.2f}s: {result.success}")
     
     def test_binary_data_injection(self, pdf_operations_secure, security_temp_dir, security_logger):
         """Test handling of PDFs with binary data injection attempts."""
         # Create PDF with embedded binary data that could be malicious
-        binary_pdf = security_temp_dir / \"binary_injection.pdf\"
+        binary_pdf = security_temp_dir / "binary_injection.pdf"
         
         with open(binary_pdf, 'wb') as f:
             f.write(b'%PDF-1.4\n')
@@ -363,7 +363,7 @@ class TestAdvancedMaliciousPDFHandling:
             f.write(str(f.tell() + 20).encode())
             f.write(b'\\n%%EOF\\n')
         
-        output_path = security_temp_dir / \"binary_injection_output.pdf\"
+        output_path = security_temp_dir / "binary_injection_output.pdf"
         
         # Should handle binary data safely
         result = pdf_operations_secure.rotate_pdf(
@@ -373,4 +373,4 @@ class TestAdvancedMaliciousPDFHandling:
         # Should not crash or exhibit unexpected behavior
         assert isinstance(result, OperationResult)
         
-        security_logger.info(f\"Binary injection PDF handled: {result.success}\")
+        security_logger.info(f"Binary injection PDF handled: {result.success}")

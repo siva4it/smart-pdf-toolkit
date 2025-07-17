@@ -71,7 +71,7 @@ class SecurityTestOrchestrator:
         except Exception as e:
             passed = False
             error_message = str(e)
-            self.logger.error(f\"Security test {test_name} failed: {e}\")
+            self.logger.error(f"Security test {test_name} failed: {e}")
         
         execution_time = time.time() - start_time
         final_memory = process.memory_info().rss
@@ -89,7 +89,7 @@ class SecurityTestOrchestrator:
         return result
     
     def run_stress_test(self, operation_func, iterations: int, concurrent_threads: int = 1) -> StressTestMetrics:
-        \"\"\"Run stress test with comprehensive monitoring.\"\"\"
+        """Run stress test with comprehensive monitoring."""
         process = psutil.Process()
         memory_samples = []
         cpu_samples = []
@@ -98,7 +98,7 @@ class SecurityTestOrchestrator:
         error_count = 0
         
         def monitor_resources():
-            \"\"\"Monitor system resources during stress test.\"\"\"
+            """Monitor system resources during stress test."""
             while not stop_monitoring:
                 try:
                     memory_samples.append(process.memory_info().rss / 1024 / 1024)  # MB
@@ -120,7 +120,7 @@ class SecurityTestOrchestrator:
                         success_count += 1
                     except Exception as e:
                         error_count += 1
-                        self.logger.warning(f\"Stress test iteration {i} failed: {e}\")
+                        self.logger.warning(f"Stress test iteration {i} failed: {e}")
             else:
                 # Concurrent execution
                 with ThreadPoolExecutor(max_workers=concurrent_threads) as executor:
@@ -132,7 +132,7 @@ class SecurityTestOrchestrator:
                             success_count += 1
                         except Exception as e:
                             error_count += 1
-                            self.logger.warning(f\"Concurrent stress test failed: {e}\")
+                            self.logger.warning(f"Concurrent stress test failed: {e}")
         
         finally:
             stop_monitoring = True
@@ -152,7 +152,7 @@ class SecurityTestOrchestrator:
         )
     
     def generate_security_report(self) -> Dict[str, Any]:
-        \"\"\"Generate comprehensive security test report.\"\"\"
+        """Generate comprehensive security test report."""
         total_tests = len(self.results)
         passed_tests = sum(1 for r in self.results if r.passed)
         failed_tests = total_tests - passed_tests
@@ -161,44 +161,44 @@ class SecurityTestOrchestrator:
         total_memory = sum(r.memory_usage for r in self.results)
         
         return {
-            \"summary\": {
-                \"total_tests\": total_tests,
-                \"passed_tests\": passed_tests,
-                \"failed_tests\": failed_tests,
-                \"success_rate\": (passed_tests / total_tests * 100) if total_tests > 0 else 0,
-                \"total_execution_time\": total_time,
-                \"total_memory_usage\": total_memory
+            "summary": {
+                "total_tests": total_tests,
+                "passed_tests": passed_tests,
+                "failed_tests": failed_tests,
+                "success_rate": (passed_tests / total_tests * 100) if total_tests > 0 else 0,
+                "total_execution_time": total_time,
+                "total_memory_usage": total_memory
             },
-            \"failed_tests\": [
-                {\"name\": r.test_name, \"error\": r.error_message}
+            "failed_tests": [
+                {"name": r.test_name, "error": r.error_message}
                 for r in self.results if not r.passed
             ],
-            \"performance_metrics\": {
-                \"avg_execution_time\": total_time / total_tests if total_tests > 0 else 0,
-                \"avg_memory_usage\": total_memory / total_tests if total_tests > 0 else 0
+            "performance_metrics": {
+                "avg_execution_time": total_time / total_tests if total_tests > 0 else 0,
+                "avg_memory_usage": total_memory / total_tests if total_tests > 0 else 0
             },
-            \"stress_test_metrics\": self.metrics
+            "stress_test_metrics": self.metrics
         }
 
 
 @pytest.fixture
 def security_orchestrator(security_config, security_logger):
-    \"\"\"Create a security test orchestrator.\"\"\"
+    """Create a security test orchestrator."""
     return SecurityTestOrchestrator(security_config, security_logger)
 
 
 class TestComprehensiveSecurityFramework:
-    \"\"\"Comprehensive security and stress testing framework.\"\"\"
+    """Comprehensive security and stress testing framework."""
     
     def test_password_security_comprehensive(self, security_orchestrator, security_manager, sample_passwords):
-        \"\"\"Comprehensive password security testing.\"\"\"
+        """Comprehensive password security testing."""
         
         def test_password_strength():
             # Test various password strengths
             for password_type, password in sample_passwords.items():
                 result = security_manager.validate_password_strength(password)
                 if password_type == 'weak':
-                    assert not result.success or \"weak\" in result.message.lower()
+                    assert not result.success or "weak" in result.message.lower()
                 elif password_type == 'strong':
                     assert result.success
         
@@ -207,7 +207,7 @@ class TestComprehensiveSecurityFramework:
             test_password = sample_passwords['strong']
             hashed = security_manager.hash_password(test_password)
             assert security_manager.verify_password(test_password, hashed)
-            assert not security_manager.verify_password(\"wrong\", hashed)
+            assert not security_manager.verify_password("wrong", hashed)
         
         def test_unicode_passwords():
             # Test Unicode password handling
@@ -216,29 +216,29 @@ class TestComprehensiveSecurityFramework:
             assert security_manager.verify_password(unicode_password, hashed)
         
         # Run comprehensive password tests
-        security_orchestrator.run_security_test(test_password_strength, \"password_strength\")
-        security_orchestrator.run_security_test(test_password_encryption, \"password_encryption\")
-        security_orchestrator.run_security_test(test_unicode_passwords, \"unicode_passwords\")
+        security_orchestrator.run_security_test(test_password_strength, "password_strength")
+        security_orchestrator.run_security_test(test_password_encryption, "password_encryption")
+        security_orchestrator.run_security_test(test_unicode_passwords, "unicode_passwords")
     
     def test_input_validation_comprehensive(self, security_orchestrator, pdf_operations_secure, malicious_inputs):
-        \"\"\"Comprehensive input validation testing.\"\"\"
+        """Comprehensive input validation testing."""
         
         def test_malicious_file_paths():
             # Test path traversal attacks
             malicious_paths = [
-                \"../../../etc/passwd\",
-                \"..\\\\..\\\\..\\\\windows\\\\system32\\\\config\\\\sam\",
-                \"/dev/null\",
-                \"CON\", \"PRN\", \"AUX\",  # Windows reserved names
-                \"file:///etc/passwd\",
-                \"\\x00truncated\",
-                \"very_long_path\" + \"a\" * 1000
+                "../../../etc/passwd",
+                "..\\\\..\\\\..\\\\windows\\\\system32\\\\config\\\\sam",
+                "/dev/null",
+                "CON", "PRN", "AUX",  # Windows reserved names
+                "file:///etc/passwd",
+                "\\x00truncated",
+                "very_long_path" + "a" * 1000
             ]
             
             for path in malicious_paths:
                 try:
                     result = pdf_operations_secure.validate_file_path(path)
-                    assert not result.success, f\"Should reject malicious path: {path}\"
+                    assert not result.success, f"Should reject malicious path: {path}"
                 except Exception:
                     pass  # Expected to fail
         
@@ -252,11 +252,11 @@ class TestComprehensiveSecurityFramework:
                     assert isinstance(result, OperationResult)
                 except Exception as e:
                     # Should not crash the application
-                    assert \"crash\" not in str(e).lower()
+                    assert "crash" not in str(e).lower()
         
         def test_buffer_overflow_protection():
             # Test protection against buffer overflow attempts
-            large_input = \"A\" * (10 * 1024 * 1024)  # 10MB string
+            large_input = "A" * (10 * 1024 * 1024)  # 10MB string
             try:
                 result = pdf_operations_secure.process_text_input(large_input)
                 # Should handle large inputs gracefully
@@ -265,28 +265,28 @@ class TestComprehensiveSecurityFramework:
                 pass  # Acceptable to run out of memory
             except Exception as e:
                 # Should not cause unexpected crashes
-                assert \"segmentation\" not in str(e).lower()
+                assert "segmentation" not in str(e).lower()
         
         # Run comprehensive input validation tests
-        security_orchestrator.run_security_test(test_malicious_file_paths, \"malicious_file_paths\")
-        security_orchestrator.run_security_test(test_malicious_file_content, \"malicious_file_content\")
-        security_orchestrator.run_security_test(test_buffer_overflow_protection, \"buffer_overflow_protection\")
+        security_orchestrator.run_security_test(test_malicious_file_paths, "malicious_file_paths")
+        security_orchestrator.run_security_test(test_malicious_file_content, "malicious_file_content")
+        security_orchestrator.run_security_test(test_buffer_overflow_protection, "buffer_overflow_protection")
     
     def test_stress_testing_comprehensive(self, security_orchestrator, pdf_operations_secure, security_temp_dir):
-        \"\"\"Comprehensive stress testing.\"\"\"
+        """Comprehensive stress testing."""
         
         # Create test files
         test_files = []
         for i in range(10):
-            test_file = security_temp_dir / f\"stress_test_{i}.pdf\"
+            test_file = security_temp_dir / f"stress_test_{i}.pdf"
             test_file.touch()
             test_files.append(test_file)
         
         def single_operation():
-            \"\"\"Single PDF operation for stress testing.\"\"\"
+            """Single PDF operation for stress testing."""
             import random
             test_file = random.choice(test_files)
-            output_file = security_temp_dir / f\"output_{random.randint(1000, 9999)}.pdf\"
+            output_file = security_temp_dir / f"output_{random.randint(1000, 9999)}.pdf"
             
             result = pdf_operations_secure.rotate_pdf(
                 str(test_file), [90], str(output_file)
@@ -295,10 +295,10 @@ class TestComprehensiveSecurityFramework:
         
         # Run stress tests with different configurations
         test_configs = [
-            (\"sequential_light\", 50, 1),
-            (\"sequential_heavy\", 100, 1),
-            (\"concurrent_light\", 50, 5),
-            (\"concurrent_heavy\", 100, 10)
+            ("sequential_light", 50, 1),
+            ("sequential_heavy", 100, 1),
+            ("concurrent_light", 50, 5),
+            ("concurrent_heavy", 100, 10)
         ]
         
         for test_name, iterations, threads in test_configs:
@@ -308,23 +308,23 @@ class TestComprehensiveSecurityFramework:
             security_orchestrator.metrics[test_name] = metrics
             
             # Validate stress test results
-            assert metrics.success_count > 0, f\"No successful operations in {test_name}\"
-            assert metrics.peak_memory_mb < 1000, f\"Memory usage too high in {test_name}: {metrics.peak_memory_mb}MB\"
-            assert metrics.operations_per_second > 0, f\"No operations completed in {test_name}\"
+            assert metrics.success_count > 0, f"No successful operations in {test_name}"
+            assert metrics.peak_memory_mb < 1000, f"Memory usage too high in {test_name}: {metrics.peak_memory_mb}MB"
+            assert metrics.operations_per_second > 0, f"No operations completed in {test_name}"
     
     def test_memory_leak_detection(self, security_orchestrator, pdf_operations_secure, security_temp_dir):
-        \"\"\"Test for memory leaks during repeated operations.\"\"\"
+        """Test for memory leaks during repeated operations."""
         
         def memory_leak_test():
             # Create test file
-            test_file = security_temp_dir / \"memory_test.pdf\"
+            test_file = security_temp_dir / \"memory_test.pdf"
             test_file.touch()
             
             initial_memory = psutil.Process().memory_info().rss
             
             # Perform repeated operations
             for i in range(100):
-                output_file = security_temp_dir / f\"memory_output_{i}.pdf\"
+                output_file = security_temp_dir / f"memory_output_{i}.pdf"
                 result = pdf_operations_secure.rotate_pdf(
                     str(test_file), [90], str(output_file)
                 )
@@ -337,16 +337,16 @@ class TestComprehensiveSecurityFramework:
             memory_increase = (final_memory - initial_memory) / 1024 / 1024  # MB
             
             # Memory increase should be reasonable (less than 100MB)
-            assert memory_increase < 100, f\"Potential memory leak detected: {memory_increase}MB increase\"
+            assert memory_increase < 100, f"Potential memory leak detected: {memory_increase}MB increase"
         
-        security_orchestrator.run_security_test(memory_leak_test, \"memory_leak_detection\")
+        security_orchestrator.run_security_test(memory_leak_test, "memory_leak_detection")
     
     def test_concurrent_access_safety(self, security_orchestrator, pdf_operations_secure, security_temp_dir):
-        \"\"\"Test thread safety and concurrent access.\"\"\"
+        """Test thread safety and concurrent access."""
         
         def concurrent_safety_test():
             # Create shared test file
-            shared_file = security_temp_dir / \"shared_test.pdf\"
+            shared_file = security_temp_dir / "shared_test.pdf"
             shared_file.touch()
             
             results = []
@@ -354,7 +354,7 @@ class TestComprehensiveSecurityFramework:
             
             def worker_operation(worker_id):
                 try:
-                    output_file = security_temp_dir / f\"concurrent_output_{worker_id}.pdf\"
+                    output_file = security_temp_dir / f"concurrent_output_{worker_id}.pdf"
                     result = pdf_operations_secure.rotate_pdf(
                         str(shared_file), [90 * worker_id], str(output_file)
                     )
@@ -374,21 +374,21 @@ class TestComprehensiveSecurityFramework:
                 thread.join(timeout=30)
             
             # Validate results
-            assert len(errors) == 0, f\"Concurrent access errors: {errors}\"
-            assert len(results) > 0, \"No operations completed\"
-            assert any(results), \"All concurrent operations failed\"
+            assert len(errors) == 0, f"Concurrent access errors: {errors}"
+            assert len(results) > 0, "No operations completed"
+            assert any(results), "All concurrent operations failed"
         
-        security_orchestrator.run_security_test(concurrent_safety_test, \"concurrent_access_safety\")
+        security_orchestrator.run_security_test(concurrent_safety_test, "concurrent_access_safety")
     
     def test_resource_exhaustion_protection(self, security_orchestrator, pdf_operations_secure, security_temp_dir):
-        \"\"\"Test protection against resource exhaustion attacks.\"\"\"
+        """Test protection against resource exhaustion attacks."""
         
         def resource_exhaustion_test():
             # Test file descriptor exhaustion protection
             open_files = []
             try:
                 for i in range(1000):  # Try to open many files
-                    test_file = security_temp_dir / f\"resource_test_{i}.pdf\"
+                    test_file = security_temp_dir / f"resource_test_{i}.pdf"
                     test_file.touch()
                     # This should be limited by the system
                     if len(open_files) < 100:  # Reasonable limit
@@ -409,9 +409,9 @@ class TestComprehensiveSecurityFramework:
             
             # Run operations for maximum 30 seconds
             while time.time() - start_time < 30 and iteration_count < 1000:
-                test_file = security_temp_dir / \"cpu_test.pdf\"
+                test_file = security_temp_dir / \"cpu_test.pdf"
                 test_file.touch()
-                output_file = security_temp_dir / f\"cpu_output_{iteration_count}.pdf\"
+                output_file = security_temp_dir / f"cpu_output_{iteration_count}.pdf"
                 
                 try:
                     result = pdf_operations_secure.rotate_pdf(
@@ -422,17 +422,17 @@ class TestComprehensiveSecurityFramework:
                     break  # Stop if operations start failing
             
             # Should complete some operations without hanging
-            assert iteration_count > 0, \"No operations completed under resource pressure\"
+            assert iteration_count > 0, "No operations completed under resource pressure"
         
-        security_orchestrator.run_security_test(resource_exhaustion_test, \"resource_exhaustion_protection\")
+        security_orchestrator.run_security_test(resource_exhaustion_test, "resource_exhaustion_protection")
     
     def test_generate_comprehensive_report(self, security_orchestrator):
-        \"\"\"Generate and validate comprehensive security report.\"\"\"
+        """Generate and validate comprehensive security report."""
         # Ensure we have some test results
         if not security_orchestrator.results:
             # Add a dummy test result
             dummy_result = SecurityTestResult(
-                test_name=\"dummy_test\",
+                test_name="dummy_test",
                 passed=True,
                 execution_time=0.1,
                 memory_usage=1024
@@ -442,17 +442,17 @@ class TestComprehensiveSecurityFramework:
         report = security_orchestrator.generate_security_report()
         
         # Validate report structure
-        assert \"summary\" in report
-        assert \"failed_tests\" in report
-        assert \"performance_metrics\" in report
-        assert \"stress_test_metrics\" in report
+        assert "summary" in report
+        assert "failed_tests" in report
+        assert "performance_metrics" in report
+        assert "stress_test_metrics" in report
         
         # Validate summary data
-        summary = report[\"summary\"]
-        assert \"total_tests\" in summary
-        assert \"passed_tests\" in summary
-        assert \"failed_tests\" in summary
-        assert \"success_rate\" in summary
+        summary = report["summary"]
+        assert "total_tests" in summary
+        assert "passed_tests" in summary
+        assert "failed_tests" in summary
+        assert "success_rate\" in summary
         
         # Log the report
-        security_orchestrator.logger.info(f\"Security Test Report: {report}\")
+        security_orchestrator.logger.info(f"Security Test Report: {report}")

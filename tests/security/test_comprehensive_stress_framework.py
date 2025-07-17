@@ -178,7 +178,7 @@ class StressTestRunner:
                      duration_seconds: int = 60,
                      ramp_up_seconds: int = 10) -> StressTestMetrics:
         """Run load test with gradual ramp-up."""
-        self.logger.info(f\"Starting load test: {concurrent_users} users, {duration_seconds}s duration\")
+        self.logger.info(f"Starting load test: {concurrent_users} users, {duration_seconds}s duration")
         
         start_time = time.time()
         self.monitor.start_monitoring()
@@ -213,7 +213,7 @@ class StressTestRunner:
                     error_type = type(e).__name__
                     error_types[error_type] = error_types.get(error_type, 0) + 1
                     
-                    if \"timeout\" in str(e).lower():
+                    if "timeout" in str(e).lower():
                         timeout_count += 1
                 
                 # Small delay to prevent overwhelming
@@ -240,7 +240,7 @@ class StressTestRunner:
         
         return StressTestMetrics(
             test_type=StressTestType.LOAD,
-            test_name=f\"load_test_{concurrent_users}_users\",
+            test_name=f"load_test_{concurrent_users}_users",
             duration=total_duration,
             operations_completed=operations_completed,
             operations_failed=operations_failed,
@@ -255,7 +255,7 @@ class StressTestRunner:
                               iterations: int = 1000,
                               memory_limit_mb: int = 500) -> StressTestMetrics:
         """Run memory stress test to detect leaks and excessive usage."""
-        self.logger.info(f\"Starting memory stress test: {iterations} iterations\")
+        self.logger.info(f"Starting memory stress test: {iterations} iterations")
         
         start_time = time.time()
         self.monitor.start_monitoring()
@@ -288,7 +288,7 @@ class StressTestRunner:
             if i % 100 == 0:
                 current_memory = psutil.Process().memory_info().rss / 1024 / 1024
                 if current_memory > memory_limit_mb:
-                    self.logger.warning(f\"Memory limit exceeded: {current_memory:.1f}MB > {memory_limit_mb}MB\")
+                    self.logger.warning(f"Memory limit exceeded: {current_memory:.1f}MB > {memory_limit_mb}MB")
                     break
                 
                 # Force garbage collection
@@ -299,7 +299,7 @@ class StressTestRunner:
         
         return StressTestMetrics(
             test_type=StressTestType.MEMORY,
-            test_name=f\"memory_stress_{iterations}_iterations\",
+            test_name=f"memory_stress_{iterations}_iterations",
             duration=total_duration,
             operations_completed=operations_completed,
             operations_failed=operations_failed,
@@ -313,7 +313,7 @@ class StressTestRunner:
                            max_workers: int = 50,
                            operations_per_worker: int = 10) -> StressTestMetrics:
         """Run concurrency test with thread pool."""
-        self.logger.info(f\"Starting concurrency test: {max_workers} workers, {operations_per_worker} ops each\")
+        self.logger.info(f"Starting concurrency test: {max_workers} workers, {operations_per_worker} ops each")
         
         start_time = time.time()
         self.monitor.start_monitoring()
@@ -352,7 +352,7 @@ class StressTestRunner:
                             if error:
                                 error_type = type(error).__name__
                                 error_types[error_type] = error_types.get(error_type, 0) + 1
-                                if \"timeout\" in str(error).lower():
+                                if "timeout" in str(error).lower():
                                     timeout_count += 1
                                     
                 except Exception as e:
@@ -365,7 +365,7 @@ class StressTestRunner:
         
         return StressTestMetrics(
             test_type=StressTestType.CONCURRENCY,
-            test_name=f\"concurrency_test_{max_workers}_workers\",
+            test_name=f"concurrency_test_{max_workers}_workers",
             duration=total_duration,
             operations_completed=operations_completed,
             operations_failed=operations_failed,
@@ -381,7 +381,7 @@ class StressTestRunner:
                           operations_per_minute: int = 60) -> StressTestMetrics:
         """Run endurance test over extended period."""
         duration_seconds = duration_hours * 3600
-        self.logger.info(f\"Starting endurance test: {duration_hours}h duration, {operations_per_minute} ops/min\")
+        self.logger.info(f"Starting endurance test: {duration_hours}h duration, {operations_per_minute} ops/min")
         
         start_time = time.time()
         self.monitor.start_monitoring()
@@ -424,7 +424,7 @@ class StressTestRunner:
         
         return StressTestMetrics(
             test_type=StressTestType.ENDURANCE,
-            test_name=f\"endurance_test_{duration_hours}h\",
+            test_name=f"endurance_test_{duration_hours}h",
             duration=total_duration,
             operations_completed=operations_completed,
             operations_failed=operations_failed,
@@ -446,7 +446,7 @@ def test_pdf_files(security_temp_dir):
     """Create test PDF files for stress testing."""
     files = []
     for i in range(10):
-        pdf_file = security_temp_dir / f\"stress_test_{i}.pdf\"
+        pdf_file = security_temp_dir / f"stress_test_{i}.pdf"
         # Create minimal PDF content
         with open(pdf_file, 'wb') as f:
             f.write(b'%PDF-1.4\\n')
@@ -465,15 +465,15 @@ def test_pdf_files(security_temp_dir):
 
 
 class TestComprehensiveStressFramework:
-    \"\"\"Comprehensive stress testing framework tests.\"\"\"
+    """Comprehensive stress testing framework tests."""
     
     def test_load_stress_test(self, stress_test_runner, pdf_operations_secure, test_pdf_files, security_temp_dir, security_logger):
-        \"\"\"Test load stress with multiple concurrent users.\"\"\"
+        """Test load stress with multiple concurrent users."""
         
         def pdf_operation():
             import random
             input_file = random.choice(test_pdf_files)
-            output_file = security_temp_dir / f\"load_output_{random.randint(1000, 9999)}.pdf\"
+            output_file = security_temp_dir / f"load_output_{random.randint(1000, 9999)}.pdf"
             
             return pdf_operations_secure.rotate_pdf(
                 str(input_file), [90], str(output_file)
@@ -495,21 +495,21 @@ class TestComprehensiveStressFramework:
         assert metrics.peak_memory_mb > 0
         
         # Log results
-        security_logger.info(f\"Load test results:\")
-        security_logger.info(f\"  Operations completed: {metrics.operations_completed}\")
-        security_logger.info(f\"  Operations failed: {metrics.operations_failed}\")
-        security_logger.info(f\"  Success rate: {metrics.success_rate:.1f}%\")
-        security_logger.info(f\"  Operations/sec: {metrics.operations_per_second:.2f}\")
-        security_logger.info(f\"  Peak memory: {metrics.peak_memory_mb:.1f}MB\")
-        security_logger.info(f\"  P95 response time: {metrics.p95_response_time:.3f}s\")
+        security_logger.info(f"Load test results:")
+        security_logger.info(f"  Operations completed: {metrics.operations_completed}")
+        security_logger.info(f"  Operations failed: {metrics.operations_failed}")
+        security_logger.info(f"  Success rate: {metrics.success_rate:.1f}%")
+        security_logger.info(f"  Operations/sec: {metrics.operations_per_second:.2f}")
+        security_logger.info(f"  Peak memory: {metrics.peak_memory_mb:.1f}MB")
+        security_logger.info(f"  P95 response time: {metrics.p95_response_time:.3f}s")
     
     def test_memory_stress_test(self, stress_test_runner, pdf_operations_secure, test_pdf_files, security_temp_dir, security_logger):
-        \"\"\"Test memory usage and leak detection.\"\"\"
+        """Test memory usage and leak detection."""
         
         def pdf_operation():
             import random
             input_file = random.choice(test_pdf_files)
-            output_file = security_temp_dir / f\"memory_output_{random.randint(1000, 9999)}.pdf\"
+            output_file = security_temp_dir / f"memory_output_{random.randint(1000, 9999)}.pdf"
             
             return pdf_operations_secure.rotate_pdf(
                 str(input_file), [90], str(output_file)
@@ -530,22 +530,22 @@ class TestComprehensiveStressFramework:
         
         # Check for memory leaks (growth should be reasonable)
         if metrics.memory_growth_mb > 100:
-            security_logger.warning(f\"Potential memory leak detected: {metrics.memory_growth_mb:.1f}MB growth\")
+            security_logger.warning(f"Potential memory leak detected: {metrics.memory_growth_mb:.1f}MB growth")
         
         # Log results
-        security_logger.info(f\"Memory stress test results:\")
-        security_logger.info(f\"  Operations completed: {metrics.operations_completed}\")
-        security_logger.info(f\"  Peak memory: {metrics.peak_memory_mb:.1f}MB\")
-        security_logger.info(f\"  Memory growth: {metrics.memory_growth_mb:.1f}MB\")
-        security_logger.info(f\"  Average memory: {metrics.avg_memory_mb:.1f}MB\")
+        security_logger.info(f"Memory stress test results:")
+        security_logger.info(f"  Operations completed: {metrics.operations_completed}")
+        security_logger.info(f"  Peak memory: {metrics.peak_memory_mb:.1f}MB")
+        security_logger.info(f"  Memory growth: {metrics.memory_growth_mb:.1f}MB")
+        security_logger.info(f"  Average memory: {metrics.avg_memory_mb:.1f}MB")
     
     def test_concurrency_stress_test(self, stress_test_runner, pdf_operations_secure, test_pdf_files, security_temp_dir, security_logger):
-        \"\"\"Test concurrent access and thread safety.\"\"\"
+        """Test concurrent access and thread safety."""
         
         def pdf_operation():
             import random
             input_file = random.choice(test_pdf_files)
-            output_file = security_temp_dir / f\"concurrent_output_{random.randint(1000, 9999)}.pdf\"
+            output_file = security_temp_dir / f"concurrent_output_{random.randint(1000, 9999)}.pdf"
             
             return pdf_operations_secure.rotate_pdf(
                 str(input_file), [90], str(output_file)
@@ -566,22 +566,22 @@ class TestComprehensiveStressFramework:
         
         # Check for thread safety issues
         if metrics.error_types:
-            security_logger.warning(f\"Concurrency errors detected: {metrics.error_types}\")
+            security_logger.warning(f"Concurrency errors detected: {metrics.error_types}")
         
         # Log results
-        security_logger.info(f\"Concurrency stress test results:\")
-        security_logger.info(f\"  Operations completed: {metrics.operations_completed}\")
-        security_logger.info(f\"  Success rate: {metrics.success_rate:.1f}%\")
-        security_logger.info(f\"  Peak threads: {metrics.peak_threads}\")
-        security_logger.info(f\"  Error types: {metrics.error_types}\")
+        security_logger.info(f"Concurrency stress test results:")
+        security_logger.info(f"  Operations completed: {metrics.operations_completed}")
+        security_logger.info(f"  Success rate: {metrics.success_rate:.1f}%")
+        security_logger.info(f"  Peak threads: {metrics.peak_threads}")
+        security_logger.info(f"  Error types: {metrics.error_types}")
     
     def test_endurance_stress_test(self, stress_test_runner, pdf_operations_secure, test_pdf_files, security_temp_dir, security_logger):
-        \"\"\"Test endurance over extended period.\"\"\"
+        """Test endurance over extended period."""
         
         def pdf_operation():
             import random
             input_file = random.choice(test_pdf_files)
-            output_file = security_temp_dir / f\"endurance_output_{random.randint(1000, 9999)}.pdf\"
+            output_file = security_temp_dir / f"endurance_output_{random.randint(1000, 9999)}.pdf"
             
             return pdf_operations_secure.rotate_pdf(
                 str(input_file), [90], str(output_file)
@@ -601,22 +601,22 @@ class TestComprehensiveStressFramework:
         assert metrics.success_rate > 80  # High success rate expected for endurance
         
         # Log results
-        security_logger.info(f\"Endurance stress test results:\")
-        security_logger.info(f\"  Duration: {metrics.duration:.1f}s\")
-        security_logger.info(f\"  Operations completed: {metrics.operations_completed}\")
-        security_logger.info(f\"  Success rate: {metrics.success_rate:.1f}%\")
-        security_logger.info(f\"  Operations/sec: {metrics.operations_per_second:.2f}\")
-        security_logger.info(f\"  Memory growth: {metrics.memory_growth_mb:.1f}MB\")
+        security_logger.info(f"Endurance stress test results:")
+        security_logger.info(f"  Duration: {metrics.duration:.1f}s")
+        security_logger.info(f"  Operations completed: {metrics.operations_completed}")
+        security_logger.info(f"  Success rate: {metrics.success_rate:.1f}%")
+        security_logger.info(f"  Operations/sec: {metrics.operations_per_second:.2f}")
+        security_logger.info(f"  Memory growth: {metrics.memory_growth_mb:.1f}MB")
     
     def test_resource_exhaustion_protection(self, pdf_operations_secure, test_pdf_files, security_temp_dir, security_logger):
-        \"\"\"Test protection against resource exhaustion.\"\"\"
+        """Test protection against resource exhaustion."""
         
         # Test file descriptor exhaustion protection
         open_files = []
         try:
             # Try to open many files simultaneously
             for i in range(100):  # Reasonable limit for testing
-                test_file = security_temp_dir / f\"resource_test_{i}.pdf\"
+                test_file = security_temp_dir / f"resource_test_{i}.pdf"
                 test_file.touch()
                 try:
                     f = open(test_file, 'rb')
@@ -627,7 +627,7 @@ class TestComprehensiveStressFramework:
             
             # Should handle resource pressure gracefully
             input_file = test_pdf_files[0]
-            output_file = security_temp_dir / \"resource_output.pdf\"
+            output_file = security_temp_dir / "resource_output.pdf"
             
             result = pdf_operations_secure.rotate_pdf(
                 str(input_file), [90], str(output_file)
@@ -644,15 +644,15 @@ class TestComprehensiveStressFramework:
                 except:
                     pass
         
-        security_logger.info(f\"Resource exhaustion test completed: opened {len(open_files)} files\")
+        security_logger.info(f"Resource exhaustion test completed: opened {len(open_files)} files")
     
     def test_stress_test_reporting(self, stress_test_runner, security_logger):
-        \"\"\"Test stress test metrics and reporting.\"\"\"
+        """Test stress test metrics and reporting."""
         
         # Create sample metrics
         metrics = StressTestMetrics(
             test_type=StressTestType.LOAD,
-            test_name=\"sample_test\",
+            test_name="sample_test",
             duration=60.0,
             operations_completed=1000,
             operations_failed=50,
@@ -665,7 +665,7 @@ class TestComprehensiveStressFramework:
             peak_file_descriptors=50,
             peak_threads=10,
             response_times=[0.1, 0.2, 0.15, 0.3, 0.25] * 200,  # Sample response times
-            error_types={\"TimeoutError\": 20, \"ValueError\": 30},
+            error_types={"TimeoutError": 20, "ValueError": 30},
             timeout_count=20
         )
         
@@ -676,8 +676,8 @@ class TestComprehensiveStressFramework:
         assert metrics.p99_response_time >= metrics.p95_response_time
         
         # Log comprehensive metrics
-        security_logger.info(f\"Stress test metrics validation:\")
-        security_logger.info(f\"  Success rate: {metrics.success_rate:.2f}%\")
-        security_logger.info(f\"  P95 response time: {metrics.p95_response_time:.3f}s\")
-        security_logger.info(f\"  P99 response time: {metrics.p99_response_time:.3f}s\")
-        security_logger.info(f\"  Error breakdown: {metrics.error_types}\")
+        security_logger.info(f"Stress test metrics validation:")
+        security_logger.info(f"  Success rate: {metrics.success_rate:.2f}%")
+        security_logger.info(f"  P95 response time: {metrics.p95_response_time:.3f}s")
+        security_logger.info(f"  P99 response time: {metrics.p99_response_time:.3f}s")
+        security_logger.info(f"  Error breakdown: {metrics.error_types}")

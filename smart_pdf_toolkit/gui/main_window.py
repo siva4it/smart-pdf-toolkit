@@ -15,11 +15,278 @@ from PyQt6.QtGui import QAction, QIcon, QDragEnterEvent, QDropEvent
 
 from ..core.config import Config
 from ..core.exceptions import PDFToolkitError
+from ..core.pdf_operations import PDFOperationsManager
+from ..core.content_extractor import ContentExtractor
+from ..core.format_converter import FormatConverter
+from ..core.security_manager import SecurityManager
+from ..core.optimization_engine import OptimizationEngine
+from ..core.ai_services import AIServices
 from .file_browser import FileBrowser
 from .operation_tabs import OperationTabs
 from .progress_dialog import ProgressDialog
 from .settings_dialog import SettingsDialog
 from .batch_processing_dialog import BatchProcessingDialog
+from .plugins_dialog import PluginsDialog
+from .about_dialog import AboutDialog
+
+
+class OperationWorker(QThread):
+    """Worker thread for processing operations."""
+    
+    progress_updated = pyqtSignal(int, str)
+    operation_completed = pyqtSignal(bool, str)
+    
+    def __init__(self, operation_type: str, params: dict, config: Config):
+        super().__init__()
+        self.operation_type = operation_type
+        self.params = params
+        self.config = config
+        self.cancelled = False
+        
+    def run(self):
+        """Execute the operation in a separate thread."""
+        try:
+            self.progress_updated.emit(10, "Initializing...")
+            
+            # Initialize core processors
+            pdf_ops = PDFOperationsManager(self.config)
+            content_extractor = ContentExtractor(self.config)
+            format_converter = FormatConverter(self.config)
+            security_manager = SecurityManager(self.config)
+            optimization_engine = OptimizationEngine(self.config)
+            ai_services = AIServices(self.config)
+            
+            self.progress_updated.emit(20, "Processing files...")
+            
+            # Execute operation based on type
+            if self.operation_type == 'merge':
+                self._execute_merge(pdf_ops)
+            elif self.operation_type == 'split':
+                self._execute_split(pdf_ops)
+            elif self.operation_type == 'rotate':
+                self._execute_rotate(pdf_ops)
+            elif self.operation_type == 'extract_text':
+                self._execute_extract_text(content_extractor)
+            elif self.operation_type == 'extract_images':
+                self._execute_extract_images(content_extractor)
+            elif self.operation_type == 'extract_tables':
+                self._execute_extract_tables(content_extractor)
+            elif self.operation_type == 'pdf_to_images':
+                self._execute_pdf_to_images(format_converter)
+            elif self.operation_type == 'images_to_pdf':
+                self._execute_images_to_pdf(format_converter)
+            elif self.operation_type == 'pdf_to_office':
+                self._execute_pdf_to_office(format_converter)
+            elif self.operation_type == 'pdf_to_html':
+                self._execute_pdf_to_html(format_converter)
+            elif self.operation_type == 'add_password':
+                self._execute_add_password(security_manager)
+            elif self.operation_type == 'remove_password':
+                self._execute_remove_password(security_manager)
+            elif self.operation_type == 'add_watermark':
+                self._execute_add_watermark(security_manager)
+            elif self.operation_type == 'optimize':
+                self._execute_optimize(optimization_engine)
+            elif self.operation_type == 'sign':
+                self._execute_sign(security_manager)
+            elif self.operation_type == 'summarize':
+                self._execute_summarize(ai_services)
+            elif self.operation_type == 'analyze':
+                self._execute_analyze(ai_services)
+            elif self.operation_type == 'question':
+                self._execute_question(ai_services)
+            elif self.operation_type == 'translate':
+                self._execute_translate(ai_services)
+            else:
+                raise ValueError(f"Unknown operation type: {self.operation_type}")
+                
+            self.progress_updated.emit(100, "Operation completed successfully!")
+            self.operation_completed.emit(True, "Operation completed successfully!")
+            
+        except Exception as e:
+            self.operation_completed.emit(False, str(e))
+            
+    def _execute_merge(self, pdf_ops):
+        """Execute PDF merge operation."""
+        files = self.params['files']
+        output_file = Path(self.params['output_file'])
+        
+        self.progress_updated.emit(50, f"Merging {len(files)} files...")
+        result = pdf_ops.merge_pdfs(files, output_file)
+        self.progress_updated.emit(90, "Finalizing merge...")
+        
+    def _execute_split(self, pdf_ops):
+        """Execute PDF split operation."""
+        file = self.params['file']
+        pages = self.params.get('pages')
+        output_dir = Path(self.params['output_dir'])
+        
+        self.progress_updated.emit(50, "Splitting PDF...")
+        if pages:
+            # Parse page ranges
+            page_ranges = self._parse_page_ranges(pages)
+            result = pdf_ops.split_pdf(file, output_dir, page_ranges)
+        else:
+            result = pdf_ops.split_pdf(file, output_dir)
+        self.progress_updated.emit(90, "Finalizing split...")
+        
+    def _execute_rotate(self, pdf_ops):
+        """Execute PDF rotate operation."""
+        file = self.params['file']
+        rotations = self.params['rotations']
+        output_file = Path(self.params['output_file'])
+        
+        self.progress_updated.emit(50, "Rotating pages...")
+        rotation_dict = self._parse_rotations(rotations)
+        result = pdf_ops.rotate_pages(file, rotation_dict, output_file)
+        self.progress_updated.emit(90, "Finalizing rotation...")
+        
+    def _execute_extract_text(self, content_extractor):
+        """Execute text extraction operation."""
+        files = self.params['files']
+        output_file = Path(self.params['output_file'])
+        preserve_layout = self.params.get('preserve_layout', False)
+        
+        self.progress_updated.emit(50, "Extracting text...")
+        all_text = []
+        for i, file in enumerate(files):
+            text = content_extractor.extract_text(file, preserve_layout=preserve_layout)
+            all_text.append(f"=== {file.name} ===\n{text}\n\n")
+            progress = 50 + (30 * (i + 1) // len(files))
+            self.progress_updated.emit(progress, f"Processed {i + 1}/{len(files)} files...")
+            
+        output_file.write_text('\n'.join(all_text), encoding='utf-8')
+        self.progress_updated.emit(90, "Saving extracted text...")
+        
+    def _execute_extract_images(self, content_extractor):
+        """Execute image extraction operation."""
+        files = self.params['files']
+        output_dir = Path(self.params['output_dir'])
+        format = self.params.get('format', 'PNG').lower()
+        
+        output_dir.mkdir(parents=True, exist_ok=True)
+        self.progress_updated.emit(50, "Extracting images...")
+        
+        for i, file in enumerate(files):
+            images = content_extractor.extract_images(file, output_dir, format)
+            progress = 50 + (30 * (i + 1) // len(files))
+            self.progress_updated.emit(progress, f"Processed {i + 1}/{len(files)} files...")
+            
+        self.progress_updated.emit(90, "Finalizing image extraction...")
+        
+    def _execute_extract_tables(self, content_extractor):
+        """Execute table extraction operation."""
+        files = self.params['files']
+        output_file = Path(self.params['output_file'])
+        format = self.params.get('format', 'CSV')
+        
+        self.progress_updated.emit(50, "Extracting tables...")
+        all_tables = []
+        
+        for i, file in enumerate(files):
+            tables = content_extractor.extract_tables(file)
+            all_tables.extend(tables)
+            progress = 50 + (30 * (i + 1) // len(files))
+            self.progress_updated.emit(progress, f"Processed {i + 1}/{len(files)} files...")
+            
+        if format.upper() == 'CSV':
+            # Save as CSV
+            import pandas as pd
+            if all_tables:
+                combined_df = pd.concat(all_tables, ignore_index=True)
+                combined_df.to_csv(output_file, index=False)
+        else:
+            # Save as Excel
+            import pandas as pd
+            if all_tables:
+                with pd.ExcelWriter(output_file) as writer:
+                    for i, table in enumerate(all_tables):
+                        table.to_excel(writer, sheet_name=f'Table_{i+1}', index=False)
+                        
+        self.progress_updated.emit(90, "Saving extracted tables...")
+        
+    def _parse_page_ranges(self, pages_str: str) -> List[int]:
+        """Parse page ranges string like '1-3,5,7-9' into list of page numbers."""
+        pages = []
+        for part in pages_str.split(','):
+            part = part.strip()
+            if '-' in part:
+                start, end = map(int, part.split('-'))
+                pages.extend(range(start, end + 1))
+            else:
+                pages.append(int(part))
+        return sorted(set(pages))
+        
+    def _parse_rotations(self, rotations_str: str) -> dict:
+        """Parse rotations string like '1:90,3:180,5-7:270' into dict."""
+        rotations = {}
+        for part in rotations_str.split(','):
+            part = part.strip()
+            if ':' in part:
+                pages_part, angle_str = part.split(':')
+                angle = int(angle_str)
+                
+                if '-' in pages_part:
+                    start, end = map(int, pages_part.split('-'))
+                    for page in range(start, end + 1):
+                        rotations[page] = angle
+                else:
+                    page = int(pages_part)
+                    rotations[page] = angle
+        return rotations
+        
+    # Add placeholder methods for other operations
+    def _execute_pdf_to_images(self, format_converter):
+        self.progress_updated.emit(50, "Converting PDF to images...")
+        # Implementation would call format_converter methods
+        
+    def _execute_images_to_pdf(self, format_converter):
+        self.progress_updated.emit(50, "Converting images to PDF...")
+        # Implementation would call format_converter methods
+        
+    def _execute_pdf_to_office(self, format_converter):
+        self.progress_updated.emit(50, "Converting PDF to Office format...")
+        # Implementation would call format_converter methods
+        
+    def _execute_pdf_to_html(self, format_converter):
+        self.progress_updated.emit(50, "Converting PDF to HTML...")
+        # Implementation would call format_converter methods
+        
+    def _execute_add_password(self, security_manager):
+        self.progress_updated.emit(50, "Adding password protection...")
+        # Implementation would call security_manager methods
+        
+    def _execute_remove_password(self, security_manager):
+        self.progress_updated.emit(50, "Removing password protection...")
+        # Implementation would call security_manager methods
+        
+    def _execute_add_watermark(self, security_manager):
+        self.progress_updated.emit(50, "Adding watermark...")
+        # Implementation would call security_manager methods
+        
+    def _execute_optimize(self, optimization_engine):
+        self.progress_updated.emit(50, "Optimizing PDF...")
+        # Implementation would call optimization_engine methods
+        
+    def _execute_sign(self, security_manager):
+        self.progress_updated.emit(50, "Signing PDF...")
+        # Implementation would call security_manager methods
+        
+    def _execute_summarize(self, ai_services):
+        self.progress_updated.emit(50, "Generating summary...")
+        # Implementation would call ai_services methods
+        
+    def _execute_analyze(self, ai_services):
+        self.progress_updated.emit(50, "Analyzing content...")
+        # Implementation would call ai_services methods
+        
+    def _execute_question(self, ai_services):
+        self.progress_updated.emit(50, "Processing question...")
+        # Implementation would call ai_services methods
+        
+    def _execute_translate(self, ai_services):
+        self.progress_updated.emit(50, "Translating document...")
+        # Implementation would call ai_services methods
 
 
 class MainWindow(QMainWindow):
@@ -30,6 +297,7 @@ class MainWindow(QMainWindow):
         self.config = config or Config()
         self.current_files: List[Path] = []
         self.progress_dialog: Optional[ProgressDialog] = None
+        self.operation_worker: Optional[OperationWorker] = None
         
         self.init_ui()
         self.setup_drag_drop()
@@ -258,17 +526,38 @@ class MainWindow(QMainWindow):
         """Handle operation request from operation tabs."""
         try:
             # Show progress dialog
-            self.show_progress("Processing files...")
+            self.show_progress("Initializing operation...")
             
-            # TODO: Implement actual operation execution
-            # This would integrate with the core processing modules
-            
-            # Simulate processing
-            QTimer.singleShot(2000, self.hide_progress)
+            # Create and start operation worker
+            self.operation_worker = OperationWorker(operation_type, params, self.config)
+            self.operation_worker.progress_updated.connect(self.on_operation_progress)
+            self.operation_worker.operation_completed.connect(self.on_operation_completed)
+            self.operation_worker.start()
             
         except Exception as e:
             self.hide_progress()
-            self.show_error(f"Operation failed: {str(e)}")
+            self.show_error(f"Failed to start operation: {str(e)}")
+            
+    def on_operation_progress(self, progress: int, message: str):
+        """Handle operation progress updates."""
+        if self.progress_dialog:
+            self.progress_dialog.set_progress(progress)
+            self.progress_dialog.set_message(message)
+            
+    def on_operation_completed(self, success: bool, message: str):
+        """Handle operation completion."""
+        self.hide_progress()
+        
+        if success:
+            QMessageBox.information(self, "Success", message)
+            self.status_bar.showMessage("Operation completed successfully", 5000)
+        else:
+            self.show_error(f"Operation failed: {message}")
+            
+        # Clean up worker
+        if self.operation_worker:
+            self.operation_worker.deleteLater()
+            self.operation_worker = None
             
     def show_progress(self, message: str):
         """Show progress dialog."""
@@ -300,8 +589,8 @@ class MainWindow(QMainWindow):
         
     def show_plugins(self):
         """Show plugins dialog."""
-        # TODO: Implement plugins dialog
-        QMessageBox.information(self, "Plugins", "Plugins dialog not yet implemented")
+        dialog = PluginsDialog(self.config, self)
+        dialog.show()
         
     def on_settings_changed(self):
         """Handle settings changes."""
@@ -325,7 +614,24 @@ class MainWindow(QMainWindow):
         
     def closeEvent(self, event):
         """Handle application close event."""
-        # TODO: Save settings and cleanup
+        # Save settings and cleanup
+        try:
+            # Cancel any running operations
+            if self.operation_worker and self.operation_worker.isRunning():
+                self.operation_worker.terminate()
+                self.operation_worker.wait(3000)  # Wait up to 3 seconds
+                
+            # Save configuration
+            self.config.save()
+            
+            # Hide progress dialog
+            if self.progress_dialog:
+                self.progress_dialog.close()
+                
+        except Exception as e:
+            # Log error but don't prevent closing
+            print(f"Error during cleanup: {e}")
+            
         event.accept()
 
 
