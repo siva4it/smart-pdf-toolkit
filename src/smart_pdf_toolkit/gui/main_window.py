@@ -4,7 +4,7 @@ Main GUI window for Smart PDF Toolkit.
 
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTabWidget, QMenuBar, QStatusBar, QToolBar, QFileDialog,
