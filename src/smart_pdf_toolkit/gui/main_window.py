@@ -111,8 +111,12 @@ class OperationWorker(QThread):
         files = self.params['files']
         output_file = Path(self.params['output_file'])
         
+        # Convert Path objects to strings
+        file_paths = [str(f) for f in files]
+        output_path = str(output_file)
+        
         self.progress_updated.emit(50, f"Merging {len(files)} files...")
-        result = pdf_ops.merge_pdfs(files, output_file)
+        result = pdf_ops.merge_pdfs(file_paths, output_path)
         self.progress_updated.emit(90, "Finalizing merge...")
         
     def _execute_split(self, pdf_ops):
@@ -121,13 +125,17 @@ class OperationWorker(QThread):
         pages = self.params.get('pages')
         output_dir = Path(self.params['output_dir'])
         
+        # Convert Path objects to strings
+        file_path = str(file)
+        output_path = str(output_dir)
+        
         self.progress_updated.emit(50, "Splitting PDF...")
         if pages:
             # Parse page ranges
             page_ranges = self._parse_page_ranges(pages)
-            result = pdf_ops.split_pdf(file, output_dir, page_ranges)
+            result = pdf_ops.split_pdf(file_path, output_path, page_ranges)
         else:
-            result = pdf_ops.split_pdf(file, output_dir)
+            result = pdf_ops.split_pdf(file_path, output_path)
         self.progress_updated.emit(90, "Finalizing split...")
         
     def _execute_rotate(self, pdf_ops):
