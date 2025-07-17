@@ -169,7 +169,8 @@ class InstalledPluginsTab(QWidget):
         search_layout.addWidget(self.search_edit)
         
         self.filter_combo = QComboBox()
-        self.filter_combo.addItems(["All", "Enabled", "Disabled", "PDF Processor", "Content Extractor", "Format Converter"])\n        search_layout.addWidget(self.filter_combo)
+        self.filter_combo.addItems(["All", "Enabled", "Disabled", "PDF Processor", "Content Extractor", "Format Converter"])
+        search_layout.addWidget(self.filter_combo)
         
         left_layout.addLayout(search_layout)
         
@@ -228,7 +229,8 @@ class InstalledPluginsTab(QWidget):
         search_text = self.search_edit.text().lower()
         filter_type = self.filter_combo.currentText()
         
-        for i in range(self.plugins_list.count()):\n            item = self.plugins_list.item(i)
+        for i in range(self.plugins_list.count()):
+            item = self.plugins_list.item(i)
             plugin_id, metadata, enabled = item.data(Qt.ItemDataRole.UserRole)
             
             # Apply search filter
